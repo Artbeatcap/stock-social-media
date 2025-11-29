@@ -1,0 +1,17 @@
+[Unit]
+Description=Twitter Post-Market Post Generator
+After=network.target
+
+[Service]
+Type=oneshot
+User=tradingapp
+WorkingDirectory=/home/tradingapp/trading-analysis
+Environment="PATH=/home/tradingapp/trading-analysis/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=/home/tradingapp/trading-analysis"
+EnvironmentFile=/home/tradingapp/trading-analysis/.env
+ExecStart=/home/tradingapp/trading-analysis/venv/bin/python /home/tradingapp/trading-analysis/twitter_auto_emailer.py --time postmarket
+
+[Install]
+WantedBy=multi-user.target
+
+
