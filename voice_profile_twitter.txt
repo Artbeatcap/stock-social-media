@@ -1,0 +1,255 @@
+EXECUTIVE SUMMARY
+
+This file captures 16 exemplar tweets from Charlie Bilello, SubuTrade, Mark Minervini, and Unusual Whales, plus a limitation note for TheTransports. Across the set, the highest-performing formats are: chart + one-line takeaway, anomaly framing, positioning/flow snapshots, and process lessons with specifics. Charlie is the cleanest macro-chart narrator, Subu is the densest on internals and positioning, Mark is the most mentor-like and psychology driven, and Unusual Whales is the most headline-desk/newswire-like.
+
+ACCOUNT STYLE NOTES
+
+@charliebilello
+Voice is clean, evidence-first, and chart-led. Typical post opens with a declarative observation, then compresses multiple data points into one sentence or a few bullet-like clauses. Minimal emojis, minimal hashtags, rare slang, frequent chart references, and occasional ticker tags at the end.
+
+@SubuTrade
+Voice is tactical, data-driven, and written for active market participants. Posts are usually short and rely on trader-native concepts such as short interest, breadth, put volume, correlations, and positioning extremes. Very little filler. Often states the setup first, then implies the trade or asks whether this time will be different.
+
+@markminervini
+Voice is coaching-heavy and behavior-first. Tweets read like distilled trading lessons: discipline, consistency, humility, skill-building, and self-mastery. Punctuation is straightforward, sentence structure is direct, and the best posts feel like hard rules learned from scars rather than quotes built for aesthetics.
+
+@unusual_whales
+Voice is fast, urgent, and newswire-like. Posts often begin with BREAKING or JUST IN, then deliver a fact, source attribution, or stat in one burst. Frequent numerics, “per [source]” sourcing, broad topic range, occasional emoji, and a much higher update cadence than the other accounts.
+
+@TheTransports
+Insufficient publicly indexed evidence to build a rigorous exemplar set with exact timestamps, engagement, and original links. Excluded from the combined style model for quality-control reasons.
+
+EXEMPLAR TWEETS
+
+[Charlie Bilello]
+
+1)
+account: @charliebilello
+timestamp: 2026-04-01 07:18 ET
+tweet_text: If OpenAI was public, it would now be the 11th largest company in the S&P 500. From a $28 billion valuation to $852 billion in only 3 years. Valuation: -Apr 2023: $28 billion -Jan 2024: $86 bil. -Oct 2024: $157 bil. -Mar 2025: $300 bil. -Oct 2025: $500 bil. -Apr 2026: $852 bil.
+likes: 198
+reposts: 31
+replies: 24
+why_popular: data take
+original_link: https://x.com/charliebilello/status/2039301254434717840
+
+2)
+account: @charliebilello
+timestamp: 2025-12-01 08:10 ET
+tweet_text: The US Bond Market has now been in a drawdown for 64 months, by far the longest in history.
+likes: 337
+reposts: 87
+replies: 28
+why_popular: chart + one-liner
+original_link: https://x.com/charliebilello/status/1995495813104230821
+
+3)
+account: @charliebilello
+timestamp: 2025-08-14 23:58 ET
+tweet_text: The S&P 500 closed at an all-time high for the 3rd straight day and 18th time this year. $SPX
+likes: 429
+reposts: 99
+replies: 25
+why_popular: chart + one-liner
+original_link: https://x.com/charliebilello/status/1956203837984825710
+
+4)
+account: @charliebilello
+timestamp: 2024-10-15 22:13 ET
+tweet_text: Over the last 30 years, the purchasing power of the US consumer dollar has been cut in half due to inflation. At the same time, the S&P 500 has gained 972% (8% per year) after adjusting for inflation. Why you need to invest, in one chart...
+likes: 541
+reposts: 225
+replies: 33
+why_popular: data take
+original_link: https://x.com/charliebilello/status/1846373778286157937
+
+[SubuTrade]
+
+5)
+account: @SubuTrade
+timestamp: 2026-02-23 05:06 ET
+tweet_text: Commercials are extremely Net-Short Bitcoin. Large Speculators are extremely Net-Long. Prior cases marked bottoming processes for Bitcoin $BTC
+likes: 802
+reposts: 143
+replies: 36
+why_popular: flow data
+original_link: https://x.com/SubuTrade/status/2025920315704873142
+
+6)
+account: @SubuTrade
+timestamp: 2026-03-30 07:40:01 UTC snapshot source
+tweet_text: Large Speculators are extremely net-long Bitcoin. Such extreme positioning was last seen in 2023, before Bitcoin rallied.
+likes: metric not surfaced in exact X page index
+reposts: metric not surfaced in exact X page index
+replies: metric not surfaced in exact X page index
+why_popular: flow data
+original_link: exact original X URL not surfaced in public indexing
+indexed_source_link: KuCoin syndicated capture, source marked as Subu Trade
+
+7)
+account: @SubuTrade
+timestamp: 2026-02-12 date-normalized from first indexed citation
+tweet_text: Tech sector $XLK Short Interest is at the highest level of this decade. Short-tech and software is a crowded trade....
+likes: 884
+reposts: 138
+replies: 50
+why_popular: sector context
+original_link: exact original X URL not surfaced in public indexing
+indexed_source_link: Daily Chartbook quote plus TwStalker engagement snapshot
+
+8)
+account: @SubuTrade
+timestamp: recent indexed mirror snapshot only
+tweet_text: $SPY Put Volume spiked on Friday. Previous spikes came close to marking bottoms for the S&P 500. Will this time be different?
+likes: about 1000
+reposts: 208 to 209
+replies: 95 to 97
+why_popular: flow data
+original_link: exact original X URL not surfaced in public indexing
+indexed_source_link: TwStalker mirror snapshot
+
+[Mark Minervini]
+
+9)
+account: @markminervini
+timestamp: recent indexed mirror snapshot only
+tweet_text: The easiest thing in the world once you have cultivated the necessary discipline and consistency of execution is to make a lot of money. Until then, it will seem like the hardest task in the world.
+likes: about 1000
+reposts: 74
+replies: 109
+why_popular: process w/ specifics
+original_link: exact original X URL not surfaced in public indexing
+indexed_source_link: TwStalker profile snapshot
+
+10)
+account: @markminervini
+timestamp: recent indexed mirror snapshot only
+tweet_text: When people think their lives suck, it almost always boils down to 3 things. One, they’re not good at something. Two, they don’t have enough money. And three, they don’t have any or enough options. The fix? Learn a valuable skill, become really good at it, and make money doing it. This will give you options and allow you to live life on your terms.
+likes: about 5000
+reposts: 602
+replies: 48
+why_popular: process w/ specifics
+original_link: exact original X URL not surfaced in public indexing
+indexed_source_link: TwStalker profile snapshot
+
+11)
+account: @markminervini
+timestamp: recent indexed mirror snapshot only
+tweet_text: The most dangerous thing you can do after some success is think you now know something. That’s when the market humbles you. Stay teachable. Stay humble. Stay alert.
+likes: high-engagement indexed profile example
+reposts: indexed profile example
+replies: indexed profile example
+why_popular: process w/ specifics
+original_link: exact original X URL not surfaced in public indexing
+indexed_source_link: TwStalker profile snapshot
+
+12)
+account: @markminervini
+timestamp: recent indexed search snapshot only
+tweet_text: Holy, look at this. BEFORE THE CEASEFIRE NEWS. Time: 12:54 AM. Price 6,120; 6,192 or 72 points ABOVE the current price. And we wonder why we have a pattern day trader rule??
+likes: indexed search example
+reposts: indexed search example
+replies: indexed search example
+why_popular: data take
+original_link: exact original X URL not surfaced in public indexing
+indexed_source_link: public web search result capture
+
+[Unusual Whales]
+
+13)
+account: @unusual_whales
+timestamp: pinned tweet, 2024 report release window in indexed profile
+tweet_text: BREAKING I just released the full report on Congress trading in 2024. Like every year since 2020, some US politicians beat the market. From the start of 2024 to year end, many had unusual trades and huge portfolio gains. Here are the top political traders of 2024.
+likes: about 32000
+reposts: about 13000
+replies: about 3000
+why_popular: data take
+original_link: exact original X URL not surfaced in public indexing
+indexed_source_link: Sotwe profile page
+
+14)
+account: @unusual_whales
+timestamp: indexed profile snapshot
+tweet_text: The US now has more unemployed people than job openings for the first time since April 2021:
+likes: 815
+reposts: 162
+replies: 122
+why_popular: chart + one-liner
+original_link: exact original X URL not surfaced in public indexing
+indexed_source_link: Sotwe profile page
+
+15)
+account: @unusual_whales
+timestamp: indexed profile snapshot
+tweet_text: Serious credit card delinquencies are at their highest level in 14 years, per Bloomberg:
+likes: 980
+reposts: 184
+replies: 105
+why_popular: data take
+original_link: exact original X URL not surfaced in public indexing
+indexed_source_link: Sotwe profile page
+
+16)
+account: @unusual_whales
+timestamp: indexed profile snapshot
+tweet_text: Gen Z is skipping meals and putting off doctor’s visits just to pay their rent, per Redfin. More than one in five (22%) of young renters report skipping meals completely to make their monthly payments, 22% have sold their belongings, and 19% have delayed medical treatments.
+likes: about 3000
+reposts: 414
+replies: 351
+why_popular: data take
+original_link: exact original X URL not surfaced in public indexing
+indexed_source_link: Sotwe profile page
+
+OVERALL COMBINED VOICE PROFILE
+
+Core tone:
+- evidence-forward
+- concise
+- punchy
+- low-friction
+- written for fast scanning
+
+Typical winning structures:
+1. one-sentence headline + chart
+2. extreme statistic + comparison to history
+3. positioning snapshot + implied forward setup
+4. universal lesson + specific behavioral fix
+
+Length:
+- Charlie and Subu: short to medium
+- Mark: medium
+- Unusual Whales: very short to short
+
+Punctuation:
+- Charlie: restrained; commas, colons, occasional ellipsis
+- Subu: restrained; more trading shorthand and occasional question
+- Mark: direct sentences, occasional rhetorical buildup, emphasis through phrasing
+- Unusual Whales: urgency markers, all caps tags like BREAKING or JUST IN
+
+Emojis:
+- Charlie: almost none
+- Subu: very few
+- Mark: rare in sampled posts
+- Unusual Whales: occasional, especially urgency or headline cues
+
+Hashtags:
+- not central to any of the four sampled voices
+- tickers matter much more than hashtags
+
+Links:
+- Charlie often references charts/video
+- Subu often implies chart context and topic threads
+- Mark can go viral with pure text
+- Unusual Whales frequently posts short source-attributed blurbs with or without chart images
+
+Chart references:
+- Charlie: core to identity
+- Subu: common, but more for setup confirmation than storytelling
+- Mark: not central in sampled indexed popular posts
+- Unusual Whales: optional, often attached to stat/news drops
+
+Data formatting:
+- Charlie: compressed chronology, percentages, valuation ladders
+- Subu: trader terminology, sector ETFs, positioning extremes, market internals
+- Mark: triads, commands, rule statements
+- Unusual Whales: percentages, broad macro facts, “per [source]”

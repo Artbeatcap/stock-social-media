@@ -1,0 +1,13 @@
+[Unit]
+Description=Twitter Pre-Market Post Generator Timer
+Requires=twitter-premarket.service
+
+[Timer]
+# Run at 8:05 AM Eastern Time (13:05 UTC) Monday-Friday
+# Staggered 5 minutes after market brief to avoid API rate limits
+OnCalendar=Mon-Fri 13:05:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+

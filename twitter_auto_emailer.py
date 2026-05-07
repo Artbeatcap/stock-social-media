@@ -7,6 +7,7 @@ Emails posts to clarencebellwork@gmail.com
 import os
 import sys
 import json
+import re
 import requests
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Tuple
@@ -38,6 +39,29 @@ sys.path.append('/home/tradingapp/trading-analysis')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+try:
+    from massive_client import (
+        fetch_spy_qqq_data as massive_fetch_spy_qqq_data,
+        fetch_top_movers_with_news as massive_fetch_top_movers_with_news,
+    )
+except Exception as e:
+    massive_fetch_spy_qqq_data = None
+    massive_fetch_top_movers_with_news = None
+    logger.warning(f"Massive client unavailable: {e}")
+
+try:
+    from tweet_generator import generate_post_market_tweet
+except Exception as e:
+    generate_post_market_tweet = None
+    logger.warning(f"tweet_generator unavailable: {e}")
+
+try:
+    from market_internals import get_market_internals, format_internals_for_prompt
+except Exception as e:
+    get_market_internals = None
+    format_internals_for_prompt = None
+    logger.warning(f"market_internals unavailable: {e}")
+
 # Initialize OpenAI client
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
@@ -56,10 +80,39 @@ NY = pytz.timezone('America/New_York')
 TWITTER_CHAR_LIMIT = 280
 
 
+def validate_no_fabricated_tickers(text: str, allowed_tickers: set) -> tuple[bool, list[str]]:
+    """
+    Returns (is_valid, list_of_unauthorized_tickers).
+    Allowlist must include indices plus every ticker present in fetched movers data.
+    """
+    safe_indices = {'SPY', 'QQQ', 'IWM', 'VIX'}
+    stoplist = {
+        'PMI', 'ETF', 'CPI', 'PPI', 'GDP', 'AI', 'USD', 'EU', 'UK', 'US',
+        'CEO', 'CFO', 'IPO', 'YOY', 'QOQ', 'EPS', 'ATR', 'EMA', 'RSI',
+        'FOMC', 'ISM'
+    }
+    allowed = {ticker.upper() for ticker in allowed_tickers}
+    tokens = re.findall(r'\b[A-Z]{2,5}\b', text)
+    suspicious = [
+        ticker for ticker in tokens
+        if ticker not in allowed
+        and ticker not in safe_indices
+        and ticker not in stoplist
+    ]
+    return len(suspicious) == 0, suspicious
+
+
 # ==================== DATA FETCHING ====================
 
 def fetch_spy_qqq_data() -> Dict[str, Any]:
     """Fetch current SPY and QQQ price data from Tradier."""
+    if massive_fetch_spy_qqq_data:
+        massive_quotes = massive_fetch_spy_qqq_data()
+        if massive_quotes:
+            if not massive_quotes.get("VIX"):
+                logger.warning("Massive VIX quote unavailable; index coverage may be tier-gated")
+            return massive_quotes
+
     if not TRADIER_TOKEN:
         logger.warning("TRADIER_API_KEY not configured")
         return {}
@@ -142,6 +195,11 @@ def fetch_economic_data_today() -> List[Dict[str, str]]:
 
 def fetch_top_movers_with_news(limit: int = 10) -> List[Dict[str, Any]]:
     """Fetch top movers with news catalysts from Tradier and Finnhub."""
+    if massive_fetch_top_movers_with_news:
+        massive_movers = massive_fetch_top_movers_with_news(limit=limit)
+        if massive_movers:
+            return massive_movers
+
     if not TRADIER_TOKEN or not FINNHUB_TOKEN:
         logger.warning("TRADIER_API_KEY or FINNHUB_TOKEN not configured for movers")
         return []
@@ -383,6 +441,19 @@ def generate_premarket_post(context: Dict[str, Any]) -> Dict[str, str]:
         ])
         data_summary += f"\nTop Losers: {losers_text}"
     
+    # DATA SUFFICIENCY GATE - refuse to call the LLM when we have no real movers.
+    # Empty movers + ticker-mention prompt = guaranteed fabrication.
+    has_movers = bool(top_gainers) or bool(top_losers) or bool(featured_mover)
+    has_indices = bool(spy_price) and bool(qqq_price)
+
+    if not has_indices:
+        logger.error("No SPY/QQQ data - refusing to generate. Aborting.")
+        return generate_fallback_premarket(context, None, None)
+
+    if not has_movers:
+        logger.warning("No movers data - using index-only fallback to prevent fabrication.")
+        return generate_fallback_premarket(context, None, None)
+    
     if not openai_client:
         logger.error("OpenAI client not configured")
         return generate_fallback_premarket(context, featured_ticker, featured_change)
@@ -420,9 +491,12 @@ def generate_premarket_post(context: Dict[str, Any]) -> Dict[str, str]:
 
 Requirements:
 - Emphasize patience, discipline over impulsiveness
-- Include specific numbers naturally (SPY/QQQ prices or percentages)
-- Mention notable individual movers with their catalysts (e.g., "NVDA up 4% on earnings beat", "TSLA slides 3% on delivery miss")
-- Show how individual stocks affect sectors (e.g., "NVDA surge lifting Tech (XLK +2.1%)")
+- Include SPY/QQQ prices/percentages and VIX naturally
+- ONLY reference movers, tickers, sectors, percentages, or catalysts that appear 
+  explicitly in the "Market Data" block above. If a fact is not in the data, do 
+  not mention it.
+- If no movers are listed in the data, write only about index levels and 
+  volatility - do NOT invent or guess at individual stocks.
 - Trading philosophy: "sometimes best trade is no trade"
 - Focus on trend-following rather than scalping in choppy conditions
 - NO hashtags in either version
@@ -464,6 +538,23 @@ Return ONLY a JSON object with this exact format:
             content = content.split("```")[1].split("```")[0].strip()
         
         result = json.loads(content)
+        allowed = {
+            m.get('ticker', '').upper()
+            for m in (top_gainers + top_losers)
+            if m.get('ticker')
+        }
+        if featured_mover and featured_mover.get('ticker'):
+            allowed.add(featured_mover.get('ticker').upper())
+        
+        for version_key in ('long', 'short'):
+            text = result.get(version_key, '')
+            is_valid, bad = validate_no_fabricated_tickers(text, allowed)
+            if not is_valid:
+                logger.error(
+                    f"FABRICATION DETECTED in {version_key} version: "
+                    f"unauthorized tickers={bad}. Refusing to send. Text: {text[:200]}"
+                )
+                return generate_fallback_premarket(context, None, None)
         
         # Validate short version length
         short_post = result.get('short', '')
@@ -495,14 +586,68 @@ Return ONLY a JSON object with this exact format:
 
 
 def generate_postmarket_post(context: Dict[str, Any]) -> Dict[str, str]:
-    """Generate post-market post with live market data"""
-    
+    """Generate post-market post with live market data.
+
+    Primary path: the three-pass generator in `tweet_generator.py` (Polygon
+    market internals -> draft -> voice rewrite -> hard validator). Falls back
+    to the legacy two-version flow only if the new path is unavailable, so the
+    n8n workflow keeps emitting an email even if Polygon/voice/etc. is down.
+    """
+
+    if generate_post_market_tweet is not None:
+        try:
+            internals_data = {}
+            internals_block = ""
+            if get_market_internals is not None and format_internals_for_prompt is not None:
+                internals_data = get_market_internals()
+                internals_block = format_internals_for_prompt(internals_data)
+
+            tweet = generate_post_market_tweet(
+                market_data_block=internals_block or None,
+            )
+            tweet = (tweet or "").strip()
+            if tweet:
+                mover_symbols = [
+                    m.get("symbol", "").upper()
+                    for side in ("gainers", "losers")
+                    for m in (internals_data.get("movers", {}) or {}).get(side, [])
+                    if m.get("symbol")
+                ]
+                featured_from_tweet = next(
+                    (
+                        symbol
+                        for symbol in mover_symbols
+                        if re.search(rf"(?<![A-Z])\$?{re.escape(symbol)}\b", tweet)
+                    ),
+                    None,
+                )
+                post_payload = {
+                    'post': tweet,
+                    'long_version': tweet,
+                    'short_version': tweet,
+                    'style': 'voice-validated',
+                    'char_count': len(tweet),
+                    'char_count_long': len(tweet),
+                    'featured_stock': featured_from_tweet,
+                    'market_summary': 'Generated via tweet_generator (Polygon internals + voice + validator)',
+                    'market_internals': internals_data,
+                    'internals_block': internals_block,
+                }
+                return {
+                    **post_payload,
+                }
+            logger.warning("tweet_generator returned empty output; falling back to legacy postmarket flow")
+        except Exception as e:
+            logger.error(f"tweet_generator failed, falling back to legacy postmarket flow: {e}")
+
     spy_price = context.get('spy_price', 0) or 0
     spy_change_pct = context.get('spy_change_pct', 0) or 0
     spy_volume = context.get('spy_volume', 0) or 0
     qqq_price = context.get('qqq_price', 0) or 0
     qqq_change_pct = context.get('qqq_change_pct', 0) or 0
     qqq_volume = context.get('qqq_volume', 0) or 0
+    vix_price = context.get('vix_price', 0) or 0
+
     market_direction = context.get('market_direction', 'mixed')
     econ_events = context.get('economic_events', [])
     
@@ -510,9 +655,10 @@ def generate_postmarket_post(context: Dict[str, Any]) -> Dict[str, str]:
     featured_ticker, featured_name, featured_change, featured_reason = identify_featured_stock(context, 'postmarket')
     
     # Build market data context for GPT
-    data_summary = f"""Market Close Data:
+    data_summary = f"""Market Data (Post-Market Close):
 - SPY: ${spy_price:.2f} ({spy_change_pct:+.2f}%){' - volume: ' + f'{spy_volume:,}' if spy_volume > 0 else ''}
 - QQQ: ${qqq_price:.2f} ({qqq_change_pct:+.2f}%){' - volume: ' + f'{qqq_volume:,}' if qqq_volume > 0 else ''}
+- VIX: {vix_price:.2f}
 """
     
     if econ_events:
@@ -543,6 +689,19 @@ def generate_postmarket_post(context: Dict[str, Any]) -> Dict[str, str]:
             for m in top_losers
         ])
         data_summary += f"\nTop Losers: {losers_text}"
+    
+    # DATA SUFFICIENCY GATE - refuse to call the LLM when we have no real movers.
+    # Empty movers + ticker-mention prompt = guaranteed fabrication.
+    has_movers = bool(top_gainers) or bool(top_losers) or bool(featured_mover)
+    has_indices = bool(spy_price) and bool(qqq_price)
+
+    if not has_indices:
+        logger.error("No SPY/QQQ data - refusing to generate. Aborting.")
+        return generate_fallback_postmarket(context, None, None)
+
+    if not has_movers:
+        logger.warning("No movers data - using index-only fallback to prevent fabrication.")
+        return generate_fallback_postmarket(context, None, None)
     
     if not openai_client:
         logger.error("OpenAI client not configured")
@@ -579,13 +738,15 @@ def generate_postmarket_post(context: Dict[str, Any]) -> Dict[str, str]:
 {style_guidance}
 
 Requirements:
-- Reviews today's action with specific data
-- Highlights what worked: patience vs impulsiveness, trend-following vs scalping
-- Mention individual stock movers with catalysts (e.g., "NVDA surged 5% on earnings beat", "TSLA slid 3% on delivery miss")
-- Show how stocks affected sectors (e.g., "NVDA surge lifting Tech (XLK +2.1%)", "AMD +6% on data center strength")
-- Provides perspective on the bigger picture
-- Reinforces trading discipline
-- Include specific numbers (SPY/QQQ performance, key levels, or sector data)
+- Emphasize patience, discipline over impulsiveness
+- Include SPY/QQQ prices/percentages and VIX naturally
+- ONLY reference movers, tickers, sectors, percentages, or catalysts that appear 
+  explicitly in the "Market Data" block above. If a fact is not in the data, do 
+  not mention it.
+- If no movers are listed in the data, write only about index levels and 
+  volatility - do NOT invent or guess at individual stocks.
+- Trading philosophy: "sometimes best trade is no trade"
+- Focus on trend-following rather than scalping in choppy conditions
 - NO hashtags in either version
 
 Generate TWO versions:
@@ -625,6 +786,23 @@ Return ONLY a JSON object with this exact format:
             content = content.split("```")[1].split("```")[0].strip()
         
         result = json.loads(content)
+        allowed = {
+            m.get('ticker', '').upper()
+            for m in (top_gainers + top_losers)
+            if m.get('ticker')
+        }
+        if featured_mover and featured_mover.get('ticker'):
+            allowed.add(featured_mover.get('ticker').upper())
+        
+        for version_key in ('long', 'short'):
+            text = result.get(version_key, '')
+            is_valid, bad = validate_no_fabricated_tickers(text, allowed)
+            if not is_valid:
+                logger.error(
+                    f"FABRICATION DETECTED in {version_key} version: "
+                    f"unauthorized tickers={bad}. Refusing to send. Text: {text[:200]}"
+                )
+                return generate_fallback_postmarket(context, None, None)
         
         # Validate short version length
         short_post = result.get('short', '')
@@ -775,22 +953,72 @@ def create_email_html(post_data: Dict[str, str], context: Dict[str, Any], time_p
     qqq_price = context.get('qqq_price', 0) or 0
     qqq_change_pct = context.get('qqq_change_pct', 0) or 0
     vix_price = context.get('vix_price', 0) or 0
-    
-    market_html = f"""
-    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-        <h3 style="margin: 0 0 10px 0; color: #2c3e50;">Market Data</h3>
-        <ul style="margin: 0; padding-left: 20px;">
-            <li>SPY: ${spy_price:.2f} ({spy_change_pct:+.2f}%)</li>
-            <li>QQQ: ${qqq_price:.2f} ({qqq_change_pct:+.2f}%)</li>
-            <li>VIX: {vix_price:.2f}</li>
-            <li>Direction: {context.get('market_direction', 'mixed').upper()}</li>
-        </ul>
-    </div>
-    """
+    internals = post_data.get('market_internals') or {}
+    internals_block = post_data.get('internals_block') or ""
+    use_internals = time_period == 'postmarket' and style == 'voice-validated' and bool(internals)
+
+    if use_internals:
+        sectors = internals.get('sectors') or []
+        breadth = internals.get('breadth') or {}
+        trend = internals.get('trend') or {}
+        sector_items = ""
+        if sectors:
+            leaders = sectors[:3]
+            laggards = list(reversed(sectors[-3:]))
+            sector_items += "<li><strong>Sector Leaders:</strong> " + ", ".join(
+                f"{s['name']} ({s['etf']}) {s['pct']:+.2f}%" for s in leaders
+            ) + "</li>"
+            sector_items += "<li><strong>Sector Laggards:</strong> " + ", ".join(
+                f"{s['name']} ({s['etf']}) {s['pct']:+.2f}%" for s in laggards
+            ) + "</li>"
+        if breadth.get('advancers') is not None and breadth.get('decliners') is not None:
+            breadth_text = f"{breadth['advancers']} advancers / {breadth['decliners']} decliners"
+            if breadth.get('ad_ratio') is not None:
+                breadth_text += f" (ratio {breadth['ad_ratio']})"
+            if breadth.get('universe_size'):
+                breadth_text += f" across {breadth['universe_size']:,} active names"
+            sector_items += f"<li><strong>Breadth:</strong> {breadth_text}</li>"
+        if trend.get('pct_above') is not None:
+            direction = "above" if trend.get('above_50dma') else "below"
+            sector_items += (
+                f"<li><strong>Trend:</strong> SPY {direction} 50DMA by "
+                f"{abs(trend['pct_above']):.2f}% (price ${trend['price']}, 50DMA ${trend['sma_50']})</li>"
+            )
+        market_html = f"""
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin: 0 0 10px 0; color: #2c3e50;">Market Internals</h3>
+            <ul style="margin: 0; padding-left: 20px;">
+                {sector_items}
+            </ul>
+        </div>
+        """
+    else:
+        market_html = f"""
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin: 0 0 10px 0; color: #2c3e50;">Market Data</h3>
+            <ul style="margin: 0; padding-left: 20px;">
+                <li>SPY: ${spy_price:.2f} ({spy_change_pct:+.2f}%)</li>
+                <li>QQQ: ${qqq_price:.2f} ({qqq_change_pct:+.2f}%)</li>
+                <li>VIX: {vix_price:.2f}</li>
+                <li>Direction: {context.get('market_direction', 'mixed').upper()}</li>
+            </ul>
+        </div>
+        """
     
     # Build movers section
-    gainers = context.get('top_gainers', [])[:3]
-    losers = context.get('top_losers', [])[:3]
+    if use_internals:
+        movers = internals.get('movers') or {}
+        gainers = [
+            {'ticker': m.get('symbol'), 'change_percentage': m.get('pct')}
+            for m in (movers.get('gainers') or [])[:3]
+        ]
+        losers = [
+            {'ticker': m.get('symbol'), 'change_percentage': m.get('pct')}
+            for m in (movers.get('losers') or [])[:3]
+        ]
+    else:
+        gainers = context.get('top_gainers', [])[:3]
+        losers = context.get('top_losers', [])[:3]
     
     movers_html = ""
     if gainers or losers:
@@ -901,6 +1129,58 @@ def create_email_text(post_data: Dict[str, str], context: Dict[str, Any], time_p
     style = post_data['style']
     char_count = post_data['char_count']
     featured_stock = post_data.get('featured_stock')
+    internals = post_data.get('market_internals') or {}
+    use_internals = time_period == 'postmarket' and style == 'voice-validated' and bool(internals)
+
+    if use_internals:
+        sectors = internals.get('sectors') or []
+        breadth = internals.get('breadth') or {}
+        trend = internals.get('trend') or {}
+        movers = internals.get('movers') or {}
+        market_lines = ["MARKET INTERNALS:"]
+        if sectors:
+            leaders = sectors[:3]
+            laggards = list(reversed(sectors[-3:]))
+            market_lines.append(
+                "- Sector Leaders: " + ", ".join(
+                    f"{s['name']} ({s['etf']}) {s['pct']:+.2f}%" for s in leaders
+                )
+            )
+            market_lines.append(
+                "- Sector Laggards: " + ", ".join(
+                    f"{s['name']} ({s['etf']}) {s['pct']:+.2f}%" for s in laggards
+                )
+            )
+        if breadth.get('advancers') is not None and breadth.get('decliners') is not None:
+            breadth_text = f"{breadth['advancers']} advancers / {breadth['decliners']} decliners"
+            if breadth.get('ad_ratio') is not None:
+                breadth_text += f" (ratio {breadth['ad_ratio']})"
+            if breadth.get('universe_size'):
+                breadth_text += f" across {breadth['universe_size']:,} active names"
+            market_lines.append(f"- Breadth: {breadth_text}")
+        if trend.get('pct_above') is not None:
+            direction = "above" if trend.get('above_50dma') else "below"
+            market_lines.append(
+                f"- Trend: SPY {direction} 50DMA by {abs(trend['pct_above']):.2f}% "
+                f"(price ${trend['price']}, 50DMA ${trend['sma_50']})"
+            )
+        market_section = "\n".join(market_lines)
+        gainers_for_text = [
+            {'ticker': m.get('symbol'), 'change_percentage': m.get('pct')}
+            for m in (movers.get('gainers') or [])[:3]
+        ]
+        losers_for_text = [
+            {'ticker': m.get('symbol'), 'change_percentage': m.get('pct')}
+            for m in (movers.get('losers') or [])[:3]
+        ]
+    else:
+        market_section = f"""MARKET DATA:
+- SPY: ${(context.get('spy_price', 0) or 0):.2f} ({(context.get('spy_change_pct', 0) or 0):+.2f}%)
+- QQQ: ${(context.get('qqq_price', 0) or 0):.2f} ({(context.get('qqq_change_pct', 0) or 0):+.2f}%)
+- VIX: {(context.get('vix_price', 0) or 0):.2f}
+- Direction: {context.get('market_direction', 'mixed').upper()}"""
+        gainers_for_text = context.get('top_gainers', [])[:3]
+        losers_for_text = context.get('top_losers', [])[:3]
     
     text = f"""
 {'='*70}
@@ -919,22 +1199,18 @@ POST DETAILS:
 - Status: {'Ready to post' if char_count <= 280 else 'Too long - needs editing'}
 {f"- Featured Stock: {featured_stock}" if featured_stock else ""}
 
-MARKET DATA:
-- SPY: ${(context.get('spy_price', 0) or 0):.2f} ({(context.get('spy_change_pct', 0) or 0):+.2f}%)
-- QQQ: ${(context.get('qqq_price', 0) or 0):.2f} ({(context.get('qqq_change_pct', 0) or 0):+.2f}%)
-- VIX: {(context.get('vix_price', 0) or 0):.2f}
-- Direction: {context.get('market_direction', 'mixed').upper()}
+{market_section}
 
 TOP GAINERS:
 """
     
-    for g in context.get('top_gainers', [])[:3]:
+    for g in gainers_for_text:
         text += f"  {g['ticker']}: +{g['change_percentage']:.2f}%\n"
     
     text += "\nTOP LOSERS:\n"
-    for l in context.get('top_losers', [])[:3]:
+    for l in losers_for_text:
         text += f"  {l['ticker']}: {l['change_percentage']:.2f}%\n"
-    
+
     text += f"""
 {'='*70}
 INSTRUCTIONS:

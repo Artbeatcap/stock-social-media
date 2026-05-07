@@ -1,6 +1,14 @@
 # Environment variables - DO NOT COMMIT
 .env
+**/.env
+.env.*
 .envrc
+*.pem
+*.p12
+secrets/
+
+# Local infra notes (may contain host IPs/paths)
+server-backup/DOWNLOADED_FILES_SUMMARY.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
