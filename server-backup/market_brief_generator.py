@@ -6,7 +6,6 @@ Integrates with existing stock news email logic and sends to subscribers
 # Enhanced gapping stocks functionality
 from market_brief_generator_fixed import (
     fetch_gapping_stocks_enhanced,
-    generate_enhanced_html,
     CONVERSATIONAL_SYSTEM_PROMPT,
 )
 
@@ -3302,7 +3301,7 @@ def send_market_brief_to_subscribers():
         # - Site content: keep legacy layout without the Subscriber Summary
         # - Email content: upgraded HTML with trader voice + subscriber summary
         site_content = generate_html_content_with_summary(summary, filtered_headlines, expected_range, gapping_stocks, None)
-        email_content = generate_enhanced_html(
+        email_content = generate_html_content_with_summary(
             summary,
             filtered_headlines,
             expected_range,
@@ -3511,8 +3510,8 @@ if __name__ == "__main__":
             else:
                 logger.info("GPT summary not available, skipping")
             
-            # Generate email content with GPT summary
-            brief_content = generate_enhanced_html(
+            # Generate email content with GPT summary (legacy generate_enhanced_html removed from _fixed module)
+            brief_content = generate_html_content_with_summary(
                 summary,
                 filtered_headlines,
                 expected_range,

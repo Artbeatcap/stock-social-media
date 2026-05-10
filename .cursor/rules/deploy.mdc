@@ -1,0 +1,66 @@
+---
+description: How to deploy local changes to the production server
+alwaysApply: false
+---
+
+# Deployment
+
+When the user asks to "deploy", "push to server", "update production", "ship it",
+or any equivalent, follow this exact sequence:
+
+## Step 1 — Always dry-run first
+Run:
+```
+./deploy.sh --dry-run
+```
+Show the user the file list that would change. Wait for explicit confirmation
+before proceeding. Do NOT skip this step even if the user says "just deploy."
+
+## Step 2 — Real deploy
+After confirmation, run:
+```
+./deploy.sh
+```
+Show the smoke-test output. If the smoke test fails, the script exits non-zero
+and the user needs to check `sudo systemctl status $SERVICE_NAME` on the server.
+
+## Variants
+- `./deploy.sh --skip-migrate` — only when user explicitly says no DB changes
+- `./deploy.sh --skip-restart` — almost never; static-asset-only changes
+
+## What the script protects (do not bypass)
+The deploy script has hard-coded excludes that prevent these from being
+overwritten on the server:
+- `.env` — production secrets live there, never push the local one
+- `static/uploads/` — live user-uploaded files
+- `instance/` — Flask runtime state, includes the `onboarding_dismissed/` flags
+- `server-backup/` — excluded only when deploying from repo root (local snapshots); if `.deployrc` sets `DEPLOY_SOURCE_DIR=server-backup`, the app is synced from that folder and this path is not uploaded as a subtree from root
+
+If the user asks to deploy ANY of those paths in a way that would overwrite prod
+secrets or live uploads, refuse and explain why. They must be edited on the
+server directly or via a different mechanism.
+
+## Reconciliation (before a big deploy or after server-only edits)
+If anything was changed directly on the VPS, local `server-backup/` may be stale and the next deploy can break prod. Pull an inventory or extract snapshot using the same `.deployrc` as deploy:
+
+```
+./scripts/reconcile_pull_server_tar.sh        # list remote tree (quiet)
+./scripts/reconcile_pull_server_tar.sh -v    # verbose list
+./scripts/reconcile_pull_server_tar.sh --extract   # unpack under server-backup/.reconcile/<timestamp>/
+```
+
+Compare with `diff -ru server-backup/ server-backup/.reconcile/<dir>/`, merge differences into git, then deploy.
+
+## Configuration
+Server details live in `.deployrc` (gitignored). If `.deployrc` is missing,
+the script fails fast with a setup hint — don't try to "fix" this by adding
+defaults; tell the user to copy `.deployrc.example` to `.deployrc`.
+
+Optional `DEPLOY_SOURCE_DIR` in `.deployrc`: set to a subdirectory name (e.g.
+`server-backup`) when `app.py` and the Flask app live under that folder instead
+of the repo root. Leave unset when the production tree matches repo root.
+
+## What "production" means here
+- Server: Linux VPS (user `tradingapp`, path `/home/tradingapp/trading-analysis`)
+- App: Flask + gunicorn, behind nginx
+- DB: PostgreSQL with Flask-Migrate (Alembic) migrations

@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .deployrc.example — template for deploy.sh configuration.
+#
+# Setup:
+#   1. cp .deployrc.example .deployrc
+#   2. Edit .deployrc with your real server details
+#   3. Confirm .deployrc is in .gitignore (it should be — see below)
+#
+# Windows / toolchain
+# - deploy.sh needs bash + ssh + rsync. Git Bash alone often lacks rsync; use WSL2
+#   (recommended: run deploy.sh inside Linux) or add rsync (MSYS2 / cwRsync).
+# - Without rsync, use scripts/deploy_vps_tar.sh — it does not use --delete-after,
+#   so files removed locally can linger on the server; prefer rsync when possible.
+# - Pull prod inventory for drift: scripts/reconcile_pull_server_tar.sh (same .deployrc).
+# For PowerShell-only sync of Twitter automation files, see scripts/deploy_to_server.ps1.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Hostname or IP of your server
+SSH_HOST="your-server.example.com"
+
+# SSH user (your project uses 'tradingapp' based on the systemd unit files)
+SSH_USER="tradingapp"
+
+# Absolute path to the app directory on the server
+REMOTE_PATH="/home/tradingapp/trading-analysis"
+
+# systemd service name to restart after deploy.
+# Replace with whatever your gunicorn unit is called — check with:
+#   systemctl list-units --type=service | grep -i trading
+SERVICE_NAME="trading-analysis"
+
+# Health-check URL hit on the server after restart.
+# Default is fine if gunicorn binds to 127.0.0.1:8000 (matches your gunicorn.conf.py).
+HEALTH_URL="http://127.0.0.1:8000/"
+
+# Optional: relative path under the repo root to sync to REMOTE_PATH (trailing slash implied).
+# This repository (ai-trading-social-media): Flask app lives under server-backup/ — set:
+#   DEPLOY_SOURCE_DIR="server-backup"
+# Leave unset if app.py and migrations/ live at the repo root (then server-backup/ is excluded from rsync).
+
+# Non-interactive restart requires passwordless sudo on the server, e.g. in
+#   sudo visudo -f /etc/sudoers.d/tradingapp-deploy
+# tradingapp ALL=(ALL) NOPASSWD: /bin/systemctl restart trading-analysis, /bin/systemctl status trading-analysis
+# (replace trading-analysis with your real SERVICE_NAME.)
