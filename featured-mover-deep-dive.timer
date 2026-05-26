@@ -1,0 +1,10 @@
+[Unit]
+Description=Featured mover deep dive timer (weekdays 5:30pm ET, after post-market email)
+
+[Timer]
+OnCalendar=Mon-Fri *-*-* 17:30:00
+Timezone=America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target
