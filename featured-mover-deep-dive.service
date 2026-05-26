@@ -1,0 +1,11 @@
+[Unit]
+Description=Featured mover deep dive (news + 1m bars + options)
+After=network-online.target twitter-postmarket.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tradingapp/trading-analysis
+EnvironmentFile=-/home/tradingapp/trading-analysis/.env
+ExecStart=/usr/bin/python3 /home/tradingapp/trading-analysis/featured_mover_deep_dive.py
+User=tradingapp
+Group=tradingapp

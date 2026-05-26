@@ -62,6 +62,13 @@ except Exception as e:
     format_internals_for_prompt = None
     logger.warning(f"market_internals unavailable: {e}")
 
+try:
+    from validation_telemetry.store import merge_movers, record_sent_post
+except Exception as e:
+    merge_movers = None
+    record_sent_post = None
+    logger.warning(f"validation_telemetry unavailable: {e}")
+
 # Initialize OpenAI client
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
@@ -350,6 +357,12 @@ def get_market_context() -> Dict[str, Any]:
             
     except Exception as e:
         logger.error(f"Error fetching market context: {e}")
+
+    if merge_movers is not None:
+        try:
+            merge_movers(context)
+        except Exception as e:
+            logger.warning(f"Could not persist mover telemetry: {e}")
     
     return context
 
@@ -1270,6 +1283,12 @@ def main(time_period: str = None):
     success = send_email(subject, html_content, text_content)
     
     if success:
+        if record_sent_post is not None:
+            try:
+                record_sent_post(time_period, post_data, context)
+                logger.info("Recorded %s post in validation_telemetry", time_period)
+            except Exception as e:
+                logger.warning(f"Could not record sent post telemetry: {e}")
         logger.info("✅ Twitter post email sent successfully!")
         print(f"\nSUCCESS: {time_period.title()} post emailed to {TO_EMAIL}")
         print(f"Post: {post_data['post']}")

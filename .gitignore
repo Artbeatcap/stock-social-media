@@ -1,3 +1,10 @@
+# Validation telemetry (runtime snapshots + generated audits)
+validation_telemetry/*.json
+validation_telemetry/reports/*.md
+validation_telemetry/research/*.md
+!validation_telemetry/reports/.gitkeep
+!validation_telemetry/research/.gitkeep
+
 # Environment variables - DO NOT COMMIT
 .env
 **/.env

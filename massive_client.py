@@ -301,17 +301,40 @@ def _normalize_news_item(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def get_news_for_ticker(ticker: str, limit: int = 5) -> list[dict[str, Any]]:
+def get_news_for_ticker(
+    ticker: str,
+    limit: int = 5,
+    *,
+    hours_back: Optional[int] = None,
+    days_back: Optional[int] = None,
+) -> list[dict[str, Any]]:
+    """Fetch recent news; optionally filter to articles within a time window."""
+    fetch_limit = min(max(limit, 5), 100)
+    if hours_back or days_back:
+        fetch_limit = min(100, max(fetch_limit, limit * 3))
+
     data = _request(
         "/v2/reference/news",
         {
             "ticker": ticker.upper(),
-            "limit": limit,
+            "limit": fetch_limit,
             "order": "desc",
             "sort": "published_utc",
         },
     )
-    return [_normalize_news_item(item) for item in data.get("results", [])[:limit]]
+    items = [_normalize_news_item(item) for item in data.get("results", [])]
+
+    cutoff_ts: Optional[int] = None
+    now = datetime.now(tz=NY)
+    if hours_back is not None:
+        cutoff_ts = int((now - timedelta(hours=hours_back)).timestamp())
+    elif days_back is not None:
+        cutoff_ts = int((now - timedelta(days=days_back)).timestamp())
+
+    if cutoff_ts is not None:
+        items = [item for item in items if _as_int(item.get("datetime")) >= cutoff_ts]
+
+    return items[:limit]
 
 
 def get_market_news(limit: int = 20) -> list[dict[str, Any]]:
@@ -413,6 +436,157 @@ def get_extended_hours_volume(symbol: str, start_dt: datetime, end_dt: datetime)
         if start_ms <= ts <= end_ms:
             volume += _as_int(item.get("v"))
     return volume
+
+
+def get_minute_bars(
+    symbol: str,
+    session_date: Optional[date] = None,
+    *,
+    limit: int = 50000,
+) -> list[dict[str, Any]]:
+    """Return 1-minute OHLCV bars for ``session_date`` (default today ET)."""
+    session_date = session_date or datetime.now(tz=NY).date()
+    massive_symbol = INDEX_SYMBOLS.get(symbol.upper(), symbol.upper())
+    data = _request(
+        f"/v2/aggs/ticker/{massive_symbol}/range/1/minute/{session_date.isoformat()}/{session_date.isoformat()}",
+        {"adjusted": "true", "sort": "asc", "limit": limit},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        bars.append(
+            {
+                "timestamp_ms": ts_ms,
+                "timestamp": datetime.fromtimestamp(ts_ms / 1000, tz=NY).isoformat(),
+                "open": _as_float(item.get("o")),
+                "high": _as_float(item.get("h")),
+                "low": _as_float(item.get("l")),
+                "close": _as_float(item.get("c")),
+                "volume": _as_int(item.get("v")),
+            }
+        )
+    return bars
+
+
+def find_largest_move_window(
+    bars: list[dict[str, Any]],
+    window_minutes: int = 15,
+) -> Optional[dict[str, Any]]:
+    """Find the window with the largest absolute % move (close vs window-open)."""
+    if len(bars) < 2:
+        return None
+
+    best: Optional[dict[str, Any]] = None
+    for idx in range(len(bars)):
+        start = bars[idx]
+        end_idx = min(idx + window_minutes, len(bars)) - 1
+        if end_idx <= idx:
+            continue
+        end = bars[end_idx]
+        open_px = _as_float(start.get("open") or start.get("close"))
+        close_px = _as_float(end.get("close"))
+        if open_px <= 0:
+            continue
+        pct = (close_px - open_px) / open_px * 100.0
+        if best is None or abs(pct) > abs(_as_float(best.get("pct_change"))):
+            best = {
+                "start_ts": start.get("timestamp"),
+                "end_ts": end.get("timestamp"),
+                "pct_change": pct,
+                "start_price": open_px,
+                "end_price": close_px,
+                "volume": sum(_as_int(b.get("volume")) for b in bars[idx : end_idx + 1]),
+            }
+    return best
+
+
+def get_options_chain_snapshot(
+    underlying: str,
+    *,
+    limit: int = 50,
+) -> dict[str, Any]:
+    """
+    Fetch options chain snapshot and flag unusual IV / open-interest concentration.
+
+    Returns ``{\"ok\": bool, \"contracts\": [...], \"flags\": [...]}``; on tier
+    errors ``ok`` is False with an explanatory ``error``.
+    """
+    symbol = underlying.upper()
+    data = _request(
+        "/v3/snapshot/options",
+        {"underlying_asset": symbol, "limit": limit},
+    )
+    if not data:
+        return {"ok": False, "error": "empty response", "contracts": [], "flags": []}
+
+    status = str(data.get("status") or "").upper()
+    if status and status not in ("OK", "DELAYED"):
+        return {
+            "ok": False,
+            "error": data.get("error") or data.get("message") or status,
+            "contracts": [],
+            "flags": [],
+        }
+
+    results = data.get("results") or data.get("contracts") or []
+    if isinstance(results, dict):
+        results = [results]
+
+    contracts: list[dict[str, Any]] = []
+    iv_values: list[float] = []
+    oi_values: list[int] = []
+
+    for raw in results[:limit]:
+        details = raw.get("details") or raw
+        greeks = raw.get("greeks") or {}
+        day = raw.get("day") or {}
+        iv = _as_float(greeks.get("implied_volatility") or raw.get("implied_volatility"))
+        oi = _as_int(raw.get("open_interest") or details.get("open_interest"))
+        strike = _as_float(details.get("strike_price") or raw.get("strike_price"))
+        exp = details.get("expiration_date") or raw.get("expiration_date")
+        ctype = (details.get("contract_type") or raw.get("contract_type") or "").lower()
+        ticker = details.get("ticker") or raw.get("ticker") or ""
+
+        contracts.append(
+            {
+                "ticker": ticker,
+                "strike": strike,
+                "expiration": exp,
+                "type": ctype,
+                "iv": iv,
+                "open_interest": oi,
+                "volume": _as_int(day.get("volume") or raw.get("volume")),
+            }
+        )
+        if iv > 0:
+            iv_values.append(iv)
+        if oi > 0:
+            oi_values.append(oi)
+
+    flags: list[str] = []
+    if not contracts:
+        return {"ok": True, "contracts": [], "flags": ["no options contracts returned"]}
+
+    if iv_values:
+        avg_iv = sum(iv_values) / len(iv_values)
+        for c in sorted(contracts, key=lambda x: x.get("iv", 0), reverse=True)[:3]:
+            iv = _as_float(c.get("iv"))
+            if iv > avg_iv * 1.35 and iv > 0:
+                flags.append(
+                    f"elevated IV {iv:.2f} vs chain avg {avg_iv:.2f} — "
+                    f"{c.get('type')} {c.get('strike')} exp {c.get('expiration')}"
+                )
+
+    if oi_values:
+        max_oi = max(oi_values)
+        for c in sorted(contracts, key=lambda x: x.get("open_interest", 0), reverse=True)[:3]:
+            oi = _as_int(c.get("open_interest"))
+            if oi >= max(max_oi * 0.25, 5000):
+                flags.append(
+                    f"OI buildup {oi:,} — {c.get('type')} {c.get('strike')} exp {c.get('expiration')}"
+                )
+
+    return {"ok": True, "contracts": contracts, "flags": flags}
 
 
 def fetch_stock_news(ticker: str) -> List[Dict[str, Any]]:

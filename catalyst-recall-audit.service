@@ -1,0 +1,11 @@
+[Unit]
+Description=Catalyst recall audit (Massive news vs pipeline catalysts)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tradingapp/trading-analysis
+EnvironmentFile=-/home/tradingapp/trading-analysis/.env
+ExecStart=/usr/bin/python3 /home/tradingapp/trading-analysis/catalyst_recall_audit.py
+User=tradingapp
+Group=tradingapp
