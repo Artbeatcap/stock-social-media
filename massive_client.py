@@ -274,7 +274,7 @@ def get_top_movers(limit: int = 10) -> list[dict[str, Any]]:
     return movers[:limit]
 
 
-def _normalize_news_item(item: dict[str, Any]) -> dict[str, Any]:
+def _normalize_news_item(item: dict[str, Any], *, ticker: Optional[str] = None) -> dict[str, Any]:
     published = item.get("published_utc") or item.get("published") or item.get("datetime")
     timestamp = int(datetime.now(tz=NY).timestamp())
     if isinstance(published, str):
@@ -288,7 +288,14 @@ def _normalize_news_item(item: dict[str, Any]) -> dict[str, Any]:
     insights = item.get("insights") or []
     sentiment = ""
     if isinstance(insights, list) and insights:
-        sentiment = str(insights[0].get("sentiment") or "").lower()
+        symbol = (ticker or "").upper()
+        match = None
+        if symbol:
+            for row in insights:
+                if str(row.get("ticker") or "").upper() == symbol:
+                    match = row
+                    break
+        sentiment = str((match or insights[0]).get("sentiment") or "").lower()
 
     return {
         "headline": item.get("title") or item.get("headline") or "",
@@ -322,7 +329,8 @@ def get_news_for_ticker(
             "sort": "published_utc",
         },
     )
-    items = [_normalize_news_item(item) for item in data.get("results", [])]
+    symbol = ticker.upper()
+    items = [_normalize_news_item(item, ticker=symbol) for item in data.get("results", [])]
 
     cutoff_ts: Optional[int] = None
     now = datetime.now(tz=NY)
