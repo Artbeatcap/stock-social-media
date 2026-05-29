@@ -219,6 +219,11 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Validation telemetry raw daily snapshots (reports/research_log are kept)
+validation_telemetry/20*/
+validation_telemetry/*_run.json
+validation_telemetry/top_*.json
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
