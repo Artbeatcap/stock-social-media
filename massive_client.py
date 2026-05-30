@@ -274,7 +274,7 @@ def get_top_movers(limit: int = 10) -> list[dict[str, Any]]:
     return movers[:limit]
 
 
-def _normalize_news_item(item: dict[str, Any]) -> dict[str, Any]:
+def _normalize_news_item(item: dict[str, Any], ticker: Optional[str] = None) -> dict[str, Any]:
     published = item.get("published_utc") or item.get("published") or item.get("datetime")
     timestamp = int(datetime.now(tz=NY).timestamp())
     if isinstance(published, str):
@@ -288,7 +288,25 @@ def _normalize_news_item(item: dict[str, Any]) -> dict[str, Any]:
     insights = item.get("insights") or []
     sentiment = ""
     if isinstance(insights, list) and insights:
-        sentiment = str(insights[0].get("sentiment") or "").lower()
+        tickers_in_article = [
+            str(t).upper()
+            for t in (item.get("tickers") or [])
+            if t
+        ]
+        target = (ticker or "").upper()
+        matched = None
+        for insight in insights:
+            if not isinstance(insight, dict):
+                continue
+            insight_ticker = str(insight.get("ticker") or "").upper()
+            if target and insight_ticker == target:
+                matched = insight
+                break
+            if not target and insight_ticker and insight_ticker in tickers_in_article:
+                matched = insight
+                break
+        chosen = matched or (insights[0] if isinstance(insights[0], dict) else {})
+        sentiment = str(chosen.get("sentiment") or "").lower()
 
     return {
         "headline": item.get("title") or item.get("headline") or "",
@@ -311,7 +329,10 @@ def get_news_for_ticker(ticker: str, limit: int = 5) -> list[dict[str, Any]]:
             "sort": "published_utc",
         },
     )
-    return [_normalize_news_item(item) for item in data.get("results", [])[:limit]]
+    return [
+        _normalize_news_item(item, ticker=ticker.upper())
+        for item in data.get("results", [])[:limit]
+    ]
 
 
 def get_market_news(limit: int = 20) -> list[dict[str, Any]]:

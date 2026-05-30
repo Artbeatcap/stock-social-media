@@ -3,8 +3,8 @@ Description=Featured Mover Deep Dive Timer (5:30 PM ET weekdays)
 Requires=catalyst-featured-deep-dive.service
 
 [Timer]
-# 5:30 PM Eastern (22:30 UTC) Monday-Friday, 30 min after post-market email
-OnCalendar=Mon-Fri 22:30:00 UTC
+# 5:30 PM US/Eastern (handles DST) Monday-Friday, after post-market email
+OnCalendar=Mon..Fri 17:30 America/New_York
 Persistent=true
 
 [Install]
