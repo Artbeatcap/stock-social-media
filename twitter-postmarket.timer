@@ -3,8 +3,8 @@ Description=Twitter Post-Market Post Generator Timer
 Requires=twitter-postmarket.service
 
 [Timer]
-# Run at 5:00 PM Eastern Time (22:00 UTC) Monday-Friday
-OnCalendar=Mon-Fri 22:00:00 UTC
+# 5:00 PM US/Eastern (handles DST) Monday-Friday — before featured deep dive at 5:30
+OnCalendar=Mon..Fri 17:00 America/New_York
 Persistent=true
 
 [Install]
