@@ -274,7 +274,7 @@ def get_top_movers(limit: int = 10) -> list[dict[str, Any]]:
     return movers[:limit]
 
 
-def _normalize_news_item(item: dict[str, Any]) -> dict[str, Any]:
+def _normalize_news_item(item: dict[str, Any], ticker: Optional[str] = None) -> dict[str, Any]:
     published = item.get("published_utc") or item.get("published") or item.get("datetime")
     timestamp = int(datetime.now(tz=NY).timestamp())
     if isinstance(published, str):
@@ -288,7 +288,25 @@ def _normalize_news_item(item: dict[str, Any]) -> dict[str, Any]:
     insights = item.get("insights") or []
     sentiment = ""
     if isinstance(insights, list) and insights:
-        sentiment = str(insights[0].get("sentiment") or "").lower()
+        tickers_in_article = [
+            str(t).upper()
+            for t in (item.get("tickers") or [])
+            if t
+        ]
+        target = (ticker or "").upper()
+        matched = None
+        for insight in insights:
+            if not isinstance(insight, dict):
+                continue
+            insight_ticker = str(insight.get("ticker") or "").upper()
+            if target and insight_ticker == target:
+                matched = insight
+                break
+            if not target and insight_ticker and insight_ticker in tickers_in_article:
+                matched = insight
+                break
+        chosen = matched or (insights[0] if isinstance(insights[0], dict) else {})
+        sentiment = str(chosen.get("sentiment") or "").lower()
 
     return {
         "headline": item.get("title") or item.get("headline") or "",
@@ -311,7 +329,10 @@ def get_news_for_ticker(ticker: str, limit: int = 5) -> list[dict[str, Any]]:
             "sort": "published_utc",
         },
     )
-    return [_normalize_news_item(item) for item in data.get("results", [])[:limit]]
+    return [
+        _normalize_news_item(item, ticker=ticker.upper())
+        for item in data.get("results", [])[:limit]
+    ]
 
 
 def get_market_news(limit: int = 20) -> list[dict[str, Any]]:
@@ -413,6 +434,72 @@ def get_extended_hours_volume(symbol: str, start_dt: datetime, end_dt: datetime)
         if start_ms <= ts <= end_ms:
             volume += _as_int(item.get("v"))
     return volume
+
+
+def get_news_for_ticker_window(
+    ticker: str,
+    *,
+    hours: int = 24,
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    """Return normalized news items published within the last ``hours`` hours."""
+    cutoff = int((datetime.now(tz=NY) - timedelta(hours=hours)).timestamp())
+    items = get_news_for_ticker(ticker, limit=limit)
+    return [item for item in items if _as_int(item.get("datetime"), 0) >= cutoff]
+
+
+def get_minute_aggregates(
+    symbol: str,
+    from_date: date,
+    to_date: date,
+    *,
+    limit: int = 50000,
+) -> list[dict[str, Any]]:
+    """Fetch 1-minute OHLCV bars for a stock between two dates (inclusive)."""
+    massive_symbol = INDEX_SYMBOLS.get(symbol.upper(), symbol.upper())
+    data = _request(
+        f"/v2/aggs/ticker/{massive_symbol}/range/1/minute/{from_date.isoformat()}/{to_date.isoformat()}",
+        {"adjusted": "true", "sort": "asc", "limit": limit},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        bars.append(
+            {
+                "t": ts_ms,
+                "datetime": datetime.fromtimestamp(ts_ms / 1000, tz=NY).isoformat(timespec="seconds"),
+                "open": _as_float(item.get("o")),
+                "high": _as_float(item.get("h")),
+                "low": _as_float(item.get("l")),
+                "close": _as_float(item.get("c")),
+                "volume": _as_int(item.get("v")),
+                "vwap": _as_float(item.get("vw")),
+            }
+        )
+    return bars
+
+
+def get_options_chain_snapshot(
+    underlying: str,
+    *,
+    expiration_date: Optional[str] = None,
+    limit: int = 50,
+) -> dict[str, Any]:
+    """Fetch a snapshot of the options chain for an underlying stock."""
+    params: dict[str, Any] = {
+        "underlying_asset": underlying.upper(),
+        "limit": limit,
+    }
+    if expiration_date:
+        params["expiration_date"] = expiration_date
+    data = _request("/v3/snapshot/options", params)
+    if not data:
+        return {"ok": False, "contracts": [], "error": "empty response"}
+
+    contracts = data.get("results") or data.get("contracts") or []
+    if isinstance(contracts, dict):
+        contracts = [contracts]
+    return {"ok": True, "contracts": contracts, "raw": data}
 
 
 def fetch_stock_news(ticker: str) -> List[Dict[str, Any]]:
