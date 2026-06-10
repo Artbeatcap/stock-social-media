@@ -227,3 +227,10 @@ __marimo__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Validation telemetry (generated at runtime)
+validation_telemetry/20*/
+validation_telemetry/*_run.json
+validation_telemetry/top_*.json
+validation_telemetry/reports/catalyst_recall_*.md
+validation_telemetry/research_log/[0-9]*.md
