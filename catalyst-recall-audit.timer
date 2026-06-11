@@ -1,0 +1,11 @@
+[Unit]
+Description=Catalyst Recall Audit Timer (weekdays 9:15pm ET)
+Requires=catalyst-recall-audit.service
+
+[Timer]
+OnCalendar=Mon-Fri *-*-* 21:15:00
+Timezone=America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target

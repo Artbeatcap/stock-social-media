@@ -296,6 +296,7 @@ def _normalize_news_item(item: dict[str, Any]) -> dict[str, Any]:
         "source": item.get("publisher", {}).get("name") if isinstance(item.get("publisher"), dict) else item.get("source", "Massive"),
         "url": item.get("article_url") or item.get("url") or "",
         "datetime": timestamp,
+        "published_utc": published if isinstance(published, str) else "",
         "sentiment": sentiment,
         "tickers": item.get("tickers") or [],
     }
@@ -413,6 +414,109 @@ def get_extended_hours_volume(symbol: str, start_dt: datetime, end_dt: datetime)
         if start_ms <= ts <= end_ms:
             volume += _as_int(item.get("v"))
     return volume
+
+
+def get_stock_aggregates(
+    ticker: str,
+    multiplier: int = 1,
+    timespan: str = "minute",
+    from_date: str = "",
+    to_date: str = "",
+    limit: int = 5000,
+) -> list[dict[str, Any]]:
+    """Return normalized intraday OHLCV bars for a ticker."""
+    symbol = INDEX_SYMBOLS.get(ticker.upper(), ticker.upper())
+    start = from_date or date.today().isoformat()
+    end = to_date or start
+    data = _request(
+        f"/v2/aggs/ticker/{symbol}/range/{multiplier}/{timespan}/{start}/{end}",
+        {"adjusted": "true", "sort": "asc", "limit": limit},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        bars.append(
+            {
+                "t": ts_ms,
+                "timestamp": datetime.fromtimestamp(ts_ms / 1000, tz=NY).isoformat() if ts_ms else "",
+                "o": _as_float(item.get("o")),
+                "h": _as_float(item.get("h")),
+                "l": _as_float(item.get("l")),
+                "c": _as_float(item.get("c")),
+                "v": _as_float(item.get("v")),
+                "vw": _as_float(item.get("vw")),
+                "n": _as_int(item.get("n")),
+            }
+        )
+    return bars
+
+
+def get_options_chain(
+    underlying_asset: str,
+    expiration_date: Optional[str] = None,
+    limit: int = 50,
+) -> dict[str, Any]:
+    """Fetch options chain snapshot; returns ok=False when tier-gated."""
+    key = _api_key()
+    if not key:
+        return {"ok": False, "error": "MASSIVE_API_KEY not configured", "contracts": []}
+
+    params: dict[str, Any] = {"apiKey": key, "limit": limit}
+    if expiration_date:
+        params["expiration_date"] = expiration_date
+    try:
+        resp = requests.get(
+            f"{MASSIVE_BASE_URL}/v3/snapshot/options/{underlying_asset.upper()}",
+            params=params,
+            timeout=15,
+        )
+        if resp.status_code == 403:
+            return {
+                "ok": False,
+                "error": "tier-gated (403): options chain requires plan upgrade",
+                "contracts": [],
+            }
+        if resp.status_code != 200:
+            return {
+                "ok": False,
+                "error": f"HTTP {resp.status_code}: {resp.text[:200]}",
+                "contracts": [],
+            }
+        data = resp.json() or {}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc), "contracts": []}
+
+    if not data:
+        return {"ok": False, "error": "empty response", "contracts": []}
+    if data.get("status") == "ERROR" or "error" in str(data).lower() and not data.get("results"):
+        return {
+            "ok": False,
+            "error": data.get("error") or data.get("message") or "options unavailable",
+            "contracts": [],
+        }
+    results = data.get("results") or data.get("options") or []
+    if isinstance(results, dict):
+        results = [results]
+    contracts: list[dict[str, Any]] = []
+    for item in results:
+        details = item.get("details") or item
+        greeks = item.get("greeks") or {}
+        day = item.get("day") or {}
+        contracts.append(
+            {
+                "ticker": details.get("ticker") or item.get("ticker"),
+                "strike": _as_float(details.get("strike_price") or item.get("strike_price")),
+                "expiration": details.get("expiration_date") or item.get("expiration_date"),
+                "contract_type": (details.get("contract_type") or item.get("contract_type") or "").lower(),
+                "open_interest": _as_int(item.get("open_interest") or details.get("open_interest")),
+                "implied_volatility": _as_float(
+                    item.get("implied_volatility") or greeks.get("implied_volatility")
+                ),
+                "volume": _as_int(day.get("volume") or item.get("volume")),
+                "last": _as_float(item.get("last_trade", {}).get("price") if isinstance(item.get("last_trade"), dict) else item.get("last")),
+            }
+        )
+    return {"ok": True, "contracts": contracts}
 
 
 def fetch_stock_news(ticker: str) -> List[Dict[str, Any]]:

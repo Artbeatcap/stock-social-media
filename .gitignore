@@ -212,6 +212,11 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Validation telemetry outputs (runtime artifacts; keep directory scaffolding)
+validation_telemetry/*.json
+validation_telemetry/reports/*.md
+validation_telemetry/research/*.md
+
 # Cursor
 #  Cursor is an AI-powered code editor. `.cursorignore` specifies files/directories to
 #  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
