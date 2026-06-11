@@ -1,0 +1,11 @@
+[Unit]
+Description=Featured Mover Deep Dive Timer (weekdays 5:30pm ET)
+Requires=featured-mover-deep-dive.service
+
+[Timer]
+OnCalendar=Mon-Fri *-*-* 17:30:00
+Timezone=America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target
