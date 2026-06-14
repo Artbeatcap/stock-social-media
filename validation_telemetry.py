@@ -46,6 +46,67 @@ def _write_json(path: Path, payload: Dict[str, Any]) -> None:
     logger.info("Wrote telemetry snapshot: %s", path)
 
 
+def _catalyst_by_ticker(movers: List[Dict[str, Any]]) -> Dict[str, str]:
+    out: Dict[str, str] = {}
+    for mover in movers:
+        ticker = str(mover.get("ticker") or mover.get("symbol") or "").upper()
+        catalyst = str(mover.get("catalyst") or "").strip()
+        if ticker and catalyst:
+            out[ticker] = catalyst
+    return out
+
+
+def _internals_movers_to_telemetry(
+    internals_movers: List[Dict[str, Any]],
+    catalyst_by_ticker: Dict[str, str],
+) -> List[Dict[str, Any]]:
+    """Normalize market_internals movers and attach pipeline catalysts when known."""
+    normalized: List[Dict[str, Any]] = []
+    for mover in internals_movers:
+        ticker = str(mover.get("symbol") or mover.get("ticker") or "").upper()
+        if not ticker:
+            continue
+        normalized.append(
+            {
+                "ticker": ticker,
+                "change_percentage": mover.get("pct", mover.get("change_percentage", 0)),
+                "price": mover.get("last", mover.get("price")),
+                "catalyst": catalyst_by_ticker.get(ticker, ""),
+                "volume": mover.get("volume"),
+            }
+        )
+    return normalized
+
+
+def _resolve_movers_for_snapshot(
+    time_period: str,
+    context: Dict[str, Any],
+    post_data: Dict[str, Any],
+) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Pick the movers shown in production and attach catalyst strings when available."""
+    catalyst_map = _catalyst_by_ticker(
+        (context.get("top_gainers") or []) + (context.get("top_losers") or [])
+    )
+    featured = context.get("featured_mover") or {}
+    featured_ticker = str(featured.get("ticker") or "").upper()
+    if featured_ticker and featured.get("catalyst"):
+        catalyst_map.setdefault(featured_ticker, str(featured.get("catalyst")))
+
+    internals = post_data.get("market_internals") or {}
+    movers_block = internals.get("movers") or {}
+    if time_period == "postmarket" and movers_block:
+        gainers = _internals_movers_to_telemetry(
+            movers_block.get("gainers") or [], catalyst_map
+        )
+        losers = _internals_movers_to_telemetry(
+            movers_block.get("losers") or [], catalyst_map
+        )
+        if gainers or losers:
+            return gainers, losers
+
+    return context.get("top_gainers") or [], context.get("top_losers") or []
+
+
 def write_run_snapshot(
     time_period: str,
     context: Dict[str, Any],
@@ -56,12 +117,13 @@ def write_run_snapshot(
     """Persist movers, catalysts, and post metadata after a successful email run."""
     date_str = trade_date or _today()
     out_dir = day_dir(date_str)
+    top_gainers, top_losers = _resolve_movers_for_snapshot(time_period, context, post_data)
     payload = {
         "date": date_str,
         "time_period": time_period,
         "recorded_at": datetime.now(NY).isoformat(timespec="seconds"),
-        "top_gainers": context.get("top_gainers") or [],
-        "top_losers": context.get("top_losers") or [],
+        "top_gainers": top_gainers,
+        "top_losers": top_losers,
         "featured_mover": context.get("featured_mover"),
         "featured_stock": post_data.get("featured_stock"),
         "post": post_data.get("post"),
