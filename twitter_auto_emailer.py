@@ -62,6 +62,12 @@ except Exception as e:
     format_internals_for_prompt = None
     logger.warning(f"market_internals unavailable: {e}")
 
+try:
+    from validation_telemetry.store import save_run_telemetry
+except Exception as e:
+    save_run_telemetry = None
+    logger.warning(f"validation_telemetry unavailable: {e}")
+
 # Initialize OpenAI client
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
@@ -1268,6 +1274,17 @@ def main(time_period: str = None):
     # Send email
     logger.info(f"Sending email to {TO_EMAIL}...")
     success = send_email(subject, html_content, text_content)
+
+    if save_run_telemetry is not None:
+        try:
+            save_run_telemetry(
+                time_period=time_period,
+                context=context,
+                post_data=post_data,
+                email_sent=success,
+            )
+        except Exception as exc:
+            logger.warning("Failed to save validation telemetry: %s", exc)
     
     if success:
         logger.info("✅ Twitter post email sent successfully!")
