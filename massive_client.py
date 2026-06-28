@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 NY = pytz.timezone("America/New_York")
 MASSIVE_BASE_URL = os.getenv("MASSIVE_BASE_URL", "https://api.massive.com").rstrip("/")
-MASSIVE_API_KEY = os.getenv("MASSIVE_API_KEY")
+MASSIVE_API_KEY = os.getenv("MASSIVE_API_KEY") or os.getenv("POLYGON_API_KEY")
 
 INDEX_SYMBOLS = {"VIX": "I:VIX", "SPX": "I:SPX", "NDX": "I:NDX", "DJI": "I:DJI"}
 DEFAULT_QUOTE_SYMBOLS = ["SPY", "QQQ", "IWM", "VIX"]
@@ -38,7 +38,7 @@ DEFAULT_MOVER_UNIVERSE = [
 
 
 def _api_key() -> Optional[str]:
-    return os.getenv("MASSIVE_API_KEY") or MASSIVE_API_KEY
+    return os.getenv("MASSIVE_API_KEY") or os.getenv("POLYGON_API_KEY") or MASSIVE_API_KEY
 
 
 def _request(path: str, params: Optional[dict[str, Any]] = None, timeout: int = 12) -> dict[str, Any]:
