@@ -7,6 +7,13 @@
 *.p12
 secrets/
 
+# Validation telemetry snapshots (generated daily; keep directory structure)
+validation_telemetry/20*/
+validation_telemetry/reports/*.md
+validation_telemetry/research_log/*.md
+!validation_telemetry/reports/.gitkeep
+!validation_telemetry/research_log/.gitkeep
+
 # Local infra notes (may contain host IPs/paths)
 server-backup/DOWNLOADED_FILES_SUMMARY.md
 
