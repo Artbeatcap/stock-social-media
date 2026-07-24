@@ -465,13 +465,11 @@ def get_options_chain_snapshot(
     limit: int = 50,
 ) -> dict[str, Any]:
     """Fetch a snapshot of the options chain for an underlying stock."""
-    params: dict[str, Any] = {
-        "underlying_asset": underlying.upper(),
-        "limit": limit,
-    }
+    symbol = underlying.upper()
+    params: dict[str, Any] = {"limit": limit}
     if expiration_date:
         params["expiration_date"] = expiration_date
-    data = _request("/v3/snapshot/options", params)
+    data = _request(f"/v3/snapshot/options/{symbol}", params)
     if not data:
         return {"ok": False, "contracts": [], "error": "empty response (options may be tier-gated)"}
 
