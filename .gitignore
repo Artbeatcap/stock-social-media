@@ -230,6 +230,7 @@ Thumbs.db
 
 # Validation telemetry (daily snapshots and generated reports)
 validation_telemetry/20*/
+validation_telemetry/offline_cache.json
 validation_telemetry/reports/*.md
 validation_telemetry/research_log/*.md
 !validation_telemetry/reports/.gitkeep

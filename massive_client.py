@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import os
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 import pytz
@@ -39,6 +40,34 @@ DEFAULT_MOVER_UNIVERSE = [
 
 def _api_key() -> Optional[str]:
     return os.getenv("MASSIVE_API_KEY") or os.getenv("POLYGON_API_KEY") or MASSIVE_API_KEY
+
+
+_OFFLINE_CACHE: dict[str, Any] | None = None
+
+
+def _offline_cache_path() -> Path:
+    override = os.getenv("MASSIVE_OFFLINE_CACHE")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parent / "validation_telemetry" / "offline_cache.json"
+
+
+def _load_offline_cache() -> dict[str, Any]:
+    global _OFFLINE_CACHE
+    if _OFFLINE_CACHE is not None:
+        return _OFFLINE_CACHE
+    path = _offline_cache_path()
+    if not path.exists():
+        _OFFLINE_CACHE = {}
+        return _OFFLINE_CACHE
+    try:
+        import json
+
+        _OFFLINE_CACHE = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.warning("Failed to read offline Massive cache %s: %s", path, exc)
+        _OFFLINE_CACHE = {}
+    return _OFFLINE_CACHE
 
 
 def _request(path: str, params: Optional[dict[str, Any]] = None, timeout: int = 12) -> dict[str, Any]:
@@ -302,10 +331,16 @@ def _normalize_news_item(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_news_for_ticker(ticker: str, limit: int = 5) -> list[dict[str, Any]]:
+    symbol = ticker.upper()
+    if not _api_key():
+        cached = (_load_offline_cache().get("news") or {}).get(symbol) or []
+        if cached:
+            return cached[:limit]
+
     data = _request(
         "/v2/reference/news",
         {
-            "ticker": ticker.upper(),
+            "ticker": symbol,
             "limit": limit,
             "order": "desc",
             "sort": "published_utc",
@@ -435,7 +470,17 @@ def get_minute_aggregates(
     limit: int = 50000,
 ) -> list[dict[str, Any]]:
     """Fetch 1-minute OHLCV bars for a stock between two dates (inclusive)."""
-    massive_symbol = INDEX_SYMBOLS.get(symbol.upper(), symbol.upper())
+    symbol = symbol.upper()
+    if not _api_key():
+        bars_by_date = (_load_offline_cache().get("minute_bars") or {}).get(symbol) or {}
+        bars: list[dict[str, Any]] = []
+        day = from_date
+        while day <= to_date:
+            bars.extend(bars_by_date.get(day.isoformat()) or [])
+            day += timedelta(days=1)
+        return bars[:limit]
+
+    massive_symbol = INDEX_SYMBOLS.get(symbol, symbol)
     data = _request(
         f"/v2/aggs/ticker/{massive_symbol}/range/1/minute/{from_date.isoformat()}/{to_date.isoformat()}",
         {"adjusted": "true", "sort": "asc", "limit": limit},
@@ -466,6 +511,11 @@ def get_options_chain_snapshot(
 ) -> dict[str, Any]:
     """Fetch a snapshot of the options chain for an underlying stock."""
     symbol = underlying.upper()
+    if not _api_key():
+        cached = (_load_offline_cache().get("options") or {}).get(symbol)
+        if cached is not None:
+            return cached
+
     params: dict[str, Any] = {"limit": limit}
     if expiration_date:
         params["expiration_date"] = expiration_date
