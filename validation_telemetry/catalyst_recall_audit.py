@@ -64,9 +64,24 @@ def run_audit(trade_date: str | None = None) -> Path:
     since_ts = int((now - timedelta(hours=24)).timestamp())
     movers = _movers_from_telemetry(session)
     if not movers:
-        raise FileNotFoundError(
-            f"No telemetry movers for {session}. Expected validation_telemetry/{session}/postmarket_run.json"
-        )
+        report_path = reports_dir() / f"catalyst_recall_{session}.md"
+        stub = [
+            f"# Catalyst Recall Audit — {session}",
+            "",
+            f"_Generated {now.strftime('%Y-%m-%d %H:%M %Z')}_",
+            "",
+            "## Summary",
+            "",
+            "No production telemetry found for this session.",
+            "",
+            f"Expected `validation_telemetry/{session}/postmarket_run.json` (or premarket) "
+            "after a successful `twitter_auto_emailer` send.",
+            "",
+            "No tickers audited.",
+        ]
+        report_path.write_text("\n".join(stub) + "\n", encoding="utf-8")
+        logger.warning("No telemetry movers for %s; wrote stub report", session)
+        return report_path
 
     audits = []
     for side, mover in movers:

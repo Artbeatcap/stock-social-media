@@ -82,11 +82,23 @@ def _format_news_timeline(news_items: list[dict[str, Any]], limit: int = 10) -> 
 
 def run_deep_dive(trade_date: str | None = None) -> Path:
     session = trade_date or session_date_et()
+    now = datetime.now(tz=NY)
     telemetry = load_run_snapshot("postmarket", trade_date=session)
     if not telemetry:
-        raise FileNotFoundError(
-            f"No postmarket telemetry for {session}. Run twitter_auto_emailer --time postmarket first."
-        )
+        log_path = research_log_dir() / f"{session}.md"
+        stub = [
+            f"# Research Log — {session}",
+            "",
+            f"_Started {now.strftime('%Y-%m-%d %H:%M %Z')}_",
+            "",
+            "## Featured: (none)",
+            "",
+            "No postmarket telemetry for this session. Run `twitter_auto_emailer --time postmarket` "
+            "after the post-market email sends successfully.",
+        ]
+        log_path.write_text("\n".join(stub) + "\n", encoding="utf-8")
+        logger.warning("No postmarket telemetry for %s; wrote stub research log", session)
+        return log_path
 
     ticker = (telemetry.get("featured_stock") or "").upper()
     if not ticker:
@@ -95,7 +107,6 @@ def run_deep_dive(trade_date: str | None = None) -> Path:
     if not ticker:
         raise ValueError(f"No featured_stock in telemetry for {session}")
 
-    now = datetime.now(tz=NY)
     seven_days_ago = int((now - timedelta(days=7)).timestamp())
     news_7d = get_news_for_ticker_since(ticker, since_ts=seven_days_ago, limit=50)
     news_24h = [
