@@ -1,0 +1,11 @@
+[Unit]
+Description=Catalyst Recall Audit Timer
+Requires=catalyst-recall-audit.service
+
+[Timer]
+# 9:15 PM Eastern (02:15 UTC next calendar day) Tue–Sat covers Mon–Fri sessions
+OnCalendar=Tue-Sat 02:15:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
