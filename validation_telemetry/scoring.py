@@ -90,7 +90,7 @@ def rank_headlines(
     limit: int = 5,
 ) -> list[dict[str, Any]]:
     ranked: list[dict[str, Any]] = []
-    for item in news_items[:limit]:
+    for item in news_items:
         headline = str(item.get("headline") or item.get("title") or "")
         published_ts = int(item.get("datetime") or item.get("published_ts") or 0)
         sentiment = ticker_sentiment(item, ticker)
@@ -112,7 +112,7 @@ def rank_headlines(
                 }
             )
     ranked.sort(key=lambda row: row["score"], reverse=True)
-    return ranked
+    return ranked[:limit]
 
 
 def audit_mover_catalyst(

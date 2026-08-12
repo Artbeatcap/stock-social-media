@@ -201,6 +201,9 @@ def run_deep_dive(trade_date: str | None = None) -> Path:
         if marker in existing:
             parts = existing.split(marker)
             existing = parts[0].rstrip()
+        none_marker = "## Featured: (none)"
+        if none_marker in existing:
+            existing = existing.split(none_marker)[0].rstrip()
         content = existing + "\n\n" + section_text + "\n"
     else:
         header = [
