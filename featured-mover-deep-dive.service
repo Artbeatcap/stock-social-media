@@ -1,0 +1,15 @@
+[Unit]
+Description=Featured-Mover Deep Dive (post-market catalyst research)
+After=network.target
+
+[Service]
+Type=oneshot
+User=tradingapp
+WorkingDirectory=/home/tradingapp/trading-analysis
+Environment="PATH=/home/tradingapp/trading-analysis/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=/home/tradingapp/trading-analysis"
+EnvironmentFile=/home/tradingapp/trading-analysis/.env
+ExecStart=/home/tradingapp/trading-analysis/venv/bin/python /home/tradingapp/trading-analysis/validation_telemetry/featured_mover_deep_dive.py
+
+[Install]
+WantedBy=multi-user.target
