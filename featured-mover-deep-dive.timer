@@ -1,0 +1,11 @@
+[Unit]
+Description=Featured-Mover Deep Dive Timer
+Requires=featured-mover-deep-dive.service
+
+[Timer]
+# 5:30 PM Eastern (22:30 UTC) Mon–Fri — 30 min after post-market email
+OnCalendar=Mon-Fri 22:30:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
