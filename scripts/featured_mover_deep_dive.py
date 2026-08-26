@@ -27,7 +27,7 @@ from massive_client import (  # noqa: E402
     get_news_for_ticker_window,
     get_options_chain_snapshot,
 )
-from validation_telemetry import load_featured_stock, load_run_snapshot, research_log_dir  # noqa: E402
+from validation_telemetry import bootstrap_telemetry_if_missing, load_featured_stock, load_run_snapshot, research_log_dir, resolve_audit_trade_date  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -191,7 +191,10 @@ def build_section(
 
     post_excerpt = ""
     if run and run.get("post"):
-        post_excerpt = str(run["post"]).strip().replace("\n", " ")[:240]
+        post = run["post"]
+        post_excerpt = (
+            str(post.get("post") if isinstance(post, dict) else post).strip().replace("\n", " ")[:240]
+        )
 
     lines = [
         f"## Featured: ${ticker}",
@@ -232,7 +235,8 @@ def append_research_log(section: str, trade_date: str) -> Path:
 
 
 def run_deep_dive(trade_date: Optional[str] = None, ticker: Optional[str] = None) -> Path:
-    trade_date = trade_date or datetime.now(NY).date().isoformat()
+    trade_date = trade_date or resolve_audit_trade_date()
+    bootstrap_telemetry_if_missing(trade_date)
     run = load_run_snapshot("postmarket", trade_date=trade_date)
     featured = (ticker or load_featured_stock(trade_date=trade_date) or "").upper()
 

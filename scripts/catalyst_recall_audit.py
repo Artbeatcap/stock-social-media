@@ -24,7 +24,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from massive_client import get_news_for_ticker_window  # noqa: E402
-from validation_telemetry import load_movers, reports_dir  # noqa: E402
+from validation_telemetry import bootstrap_telemetry_if_missing, load_movers, reports_dir, resolve_audit_trade_date  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -195,7 +195,8 @@ def render_report(results: list[dict[str, Any]], trade_date: str) -> str:
 
 
 def run_audit(trade_date: Optional[str] = None) -> Path:
-    trade_date = trade_date or datetime.now(NY).date().isoformat()
+    trade_date = trade_date or resolve_audit_trade_date()
+    bootstrap_telemetry_if_missing(trade_date)
     gainers = load_movers("gainers", trade_date=trade_date)
     losers = load_movers("losers", trade_date=trade_date)
 

@@ -171,3 +171,57 @@ def load_featured_stock(*, trade_date: Optional[str] = None) -> Optional[str]:
         return None
     featured = run.get("featured_stock")
     return str(featured).upper() if featured else None
+
+
+def resolve_audit_trade_date() -> str:
+    """Pick the trade date to audit based on current ET time."""
+    now = datetime.now(NY)
+    # Before 9:15pm ET, today's postmarket telemetry is not ready yet.
+    if now.hour < 21 or (now.hour == 21 and now.minute < 15):
+        from datetime import timedelta
+
+        return (now - timedelta(days=1)).date().isoformat()
+    return now.date().isoformat()
+
+
+def bootstrap_telemetry_if_missing(trade_date: Optional[str] = None) -> Optional[Path]:
+    """
+    Build telemetry from market_internals + Massive catalyst enrichment when
+    production snapshots are unavailable (e.g. cloud agent without prod sync).
+    """
+    date_str = trade_date or resolve_audit_trade_date()
+    if load_movers("gainers", trade_date=date_str) or load_movers("losers", trade_date=date_str):
+        return None
+
+    try:
+        from market_internals import get_market_internals
+        from massive_client import enrich_movers_with_news
+    except ImportError as exc:
+        logger.warning("Cannot bootstrap telemetry: %s", exc)
+        return None
+
+    internals = get_market_internals()
+    movers = internals.get("movers") or {}
+    gainers = enrich_movers_with_news(movers.get("gainers") or [], limit=10)
+    losers = enrich_movers_with_news(movers.get("losers") or [], limit=10)
+    if not gainers and not losers:
+        return None
+
+    featured_mover = next((g for g in gainers if g.get("catalyst")), gainers[0] if gainers else None)
+    featured_stock = str((featured_mover or {}).get("ticker") or "").upper() or None
+
+    context = {
+        "top_gainers": gainers,
+        "top_losers": losers,
+        "featured_mover": featured_mover,
+    }
+    post_data = {
+        "featured_stock": featured_stock,
+        "post": f"Bootstrapped telemetry for catalyst audit ({date_str})",
+        "style": "bootstrap",
+        "char_count": 0,
+        "market_internals": internals,
+    }
+    path = write_run_snapshot("postmarket", context, post_data, trade_date=date_str)
+    logger.info("Bootstrapped validation telemetry for %s", date_str)
+    return path

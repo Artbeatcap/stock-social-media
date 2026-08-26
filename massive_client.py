@@ -331,7 +331,9 @@ def enrich_movers_with_news(movers: list[dict[str, Any]], limit: int = 10) -> li
     enriched: list[dict[str, Any]] = []
     for mover in movers[:limit]:
         symbol = str(mover.get("symbol") or mover.get("ticker") or "").upper()
-        change_pct = _as_float(mover.get("change_percentage"))
+        change_pct = _as_float(
+            mover.get("change_percentage", mover.get("pct"))
+        )
         news_items = get_news_for_ticker(symbol, limit=5) if symbol else []
         wanted = "positive" if change_pct >= 0 else "negative"
         catalyst = ""
