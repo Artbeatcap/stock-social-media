@@ -1,0 +1,223 @@
+{
+  "date": "2026-08-27",
+  "time_period": "postmarket",
+  "recorded_at": "2026-08-28T09:18:25-04:00",
+  "top_gainers": [
+    {
+      "ticker": "CRMG",
+      "change_percentage": 44.26,
+      "price": 9.68,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "USDE",
+      "change_percentage": 34.95,
+      "price": 8.07,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "OKTA",
+      "change_percentage": 28.63,
+      "price": 172.91,
+      "catalyst": "Why SailPoint Stock Was Cruising Higher This Week",
+      "volume": null
+    },
+    {
+      "ticker": "SOLT",
+      "change_percentage": 26.32,
+      "price": 67.71,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "MSTU",
+      "change_percentage": 23.09,
+      "price": 35.34,
+      "catalyst": "MicroStrategy Supercharges AI, Unveils Updates To MicroStrategy ONE",
+      "volume": null
+    }
+  ],
+  "top_losers": [
+    {
+      "ticker": "BBW",
+      "change_percentage": -27.26,
+      "price": 28.44,
+      "catalyst": "What Has Build-A-Bear Stock Done For Investors?",
+      "volume": null
+    },
+    {
+      "ticker": "SMST",
+      "change_percentage": -23.11,
+      "price": 22.96,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "NVDQ",
+      "change_percentage": -17.38,
+      "price": 8.39,
+      "catalyst": "4 Best Inverse/Leveraged ETF Areas of Last Week",
+      "volume": null
+    },
+    {
+      "ticker": "WEN",
+      "change_percentage": -13.55,
+      "price": 7.82,
+      "catalyst": "Why Wendy's Stock Blasted Almost 15% Higher Today",
+      "volume": null
+    },
+    {
+      "ticker": "CRE",
+      "change_percentage": -13.36,
+      "price": 5.9,
+      "catalyst": "Cre8 Enterprise Limited Reports Record Number of Customers Served for the First Half of 2026",
+      "volume": null
+    }
+  ],
+  "featured_mover": {
+    "ticker": "OKTA",
+    "symbol": "OKTA",
+    "change_percentage": 0.0,
+    "price": 172.91,
+    "last": 172.91,
+    "catalyst": "Why SailPoint Stock Was Cruising Higher This Week",
+    "volume": 0
+  },
+  "featured_stock": "OKTA",
+  "post": "Bootstrapped telemetry for catalyst audit (2026-08-27)",
+  "style": "bootstrap",
+  "market_internals": {
+    "as_of": "2026-08-28T13:18:24",
+    "sectors": [
+      {
+        "etf": "XLK",
+        "name": "Technology",
+        "pct": 3.16
+      },
+      {
+        "etf": "XLE",
+        "name": "Energy",
+        "pct": -0.22
+      },
+      {
+        "etf": "XLF",
+        "name": "Financials",
+        "pct": -0.65
+      },
+      {
+        "etf": "XLU",
+        "name": "Utilities",
+        "pct": -0.76
+      },
+      {
+        "etf": "XLB",
+        "name": "Materials",
+        "pct": -0.82
+      },
+      {
+        "etf": "XLI",
+        "name": "Industrials",
+        "pct": -0.85
+      },
+      {
+        "etf": "XLRE",
+        "name": "Real Estate",
+        "pct": -0.95
+      },
+      {
+        "etf": "XLC",
+        "name": "Communication Services",
+        "pct": -1.07
+      },
+      {
+        "etf": "XLY",
+        "name": "Consumer Discretionary",
+        "pct": -1.09
+      },
+      {
+        "etf": "XLV",
+        "name": "Health Care",
+        "pct": -1.13
+      },
+      {
+        "etf": "XLP",
+        "name": "Consumer Staples",
+        "pct": -1.38
+      }
+    ],
+    "movers": {
+      "gainers": [
+        {
+          "symbol": "CRMG",
+          "pct": 44.26,
+          "last": 9.68
+        },
+        {
+          "symbol": "USDE",
+          "pct": 34.95,
+          "last": 8.07
+        },
+        {
+          "symbol": "OKTA",
+          "pct": 28.63,
+          "last": 172.91
+        },
+        {
+          "symbol": "SOLT",
+          "pct": 26.32,
+          "last": 67.71
+        },
+        {
+          "symbol": "MSTU",
+          "pct": 23.09,
+          "last": 35.34
+        }
+      ],
+      "losers": [
+        {
+          "symbol": "BBW",
+          "pct": -27.26,
+          "last": 28.44
+        },
+        {
+          "symbol": "SMST",
+          "pct": -23.11,
+          "last": 22.96
+        },
+        {
+          "symbol": "NVDQ",
+          "pct": -17.38,
+          "last": 8.39
+        },
+        {
+          "symbol": "WEN",
+          "pct": -13.55,
+          "last": 7.82
+        },
+        {
+          "symbol": "CRE",
+          "pct": -13.36,
+          "last": 5.9
+        }
+      ]
+    },
+    "breadth": {
+      "advancers": 870,
+      "decliners": 903,
+      "unchanged": 25,
+      "ad_ratio": 0.96,
+      "universe_size": 1798,
+      "scope": "price\u2265$5, vol\u22651,000,000",
+      "session_date": "2026-08-27"
+    },
+    "trend": {
+      "ticker": "SPY",
+      "price": 771.1,
+      "sma_50": 753.39,
+      "pct_above": 2.35,
+      "above_50dma": true
+    }
+  }
+}
