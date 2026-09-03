@@ -1,0 +1,223 @@
+{
+  "date": "2026-08-31",
+  "time_period": "postmarket",
+  "recorded_at": "2026-09-01T09:03:48-04:00",
+  "top_gainers": [
+    {
+      "ticker": "AEHL",
+      "change_percentage": 83.33,
+      "price": 6.49,
+      "catalyst": "Stock Market Today: Dow, Nasdaq Futures Fall As Trump Rejects 'Totally Unacceptable' Iran Peace Proposal\u2014Micron, Moderna In Focus (UPDATED)",
+      "volume": null
+    },
+    {
+      "ticker": "USDE",
+      "change_percentage": 31.21,
+      "price": 8.87,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "DPRO",
+      "change_percentage": 21.39,
+      "price": 5.42,
+      "catalyst": "Draganfly Appoints Brigadier General AJ Pasagian USMC (Ret\u2019d) as President of Draganfly Defense USA Operations",
+      "volume": null
+    },
+    {
+      "ticker": "CRCG",
+      "change_percentage": 19.32,
+      "price": 17.48,
+      "catalyst": "Currenc Group Announces Extension of Exclusivity Period for Proposed Reverse Merger with Animoca Brands Corporation Limited",
+      "volume": null
+    },
+    {
+      "ticker": "STDN",
+      "change_percentage": 14.26,
+      "price": 16.11,
+      "catalyst": "Why Cameco's Ugly Earnings Miss Might Be Good News in Disguise",
+      "volume": null
+    }
+  ],
+  "top_losers": [
+    {
+      "ticker": "EIX",
+      "change_percentage": -23.07,
+      "price": 53.98,
+      "catalyst": "ThinkLabs AI Closes $28 M Series A Led by Energy Impact Partners, Backed by NVentures and Edison International",
+      "volume": null
+    },
+    {
+      "ticker": "PCG",
+      "change_percentage": -20.06,
+      "price": 13.27,
+      "catalyst": "One of California's Largest Community Microgrids to be built in Rural Pescadero, California",
+      "volume": null
+    },
+    {
+      "ticker": "PCGPX",
+      "change_percentage": -16.47,
+      "price": 33.88,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "BMNZ",
+      "change_percentage": -13.66,
+      "price": 5.75,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "VCX",
+      "change_percentage": -12.22,
+      "price": 34.97,
+      "catalyst": "How To Own A Piece Of OpenAI Now\u2014Skipping The IPO Line",
+      "volume": null
+    }
+  ],
+  "featured_mover": {
+    "ticker": "AEHL",
+    "symbol": "AEHL",
+    "change_percentage": 0.0,
+    "price": 6.49,
+    "last": 6.49,
+    "catalyst": "Stock Market Today: Dow, Nasdaq Futures Fall As Trump Rejects 'Totally Unacceptable' Iran Peace Proposal\u2014Micron, Moderna In Focus (UPDATED)",
+    "volume": 0
+  },
+  "featured_stock": "AEHL",
+  "post": "Bootstrapped telemetry for catalyst audit (2026-08-31)",
+  "style": "bootstrap",
+  "market_internals": {
+    "as_of": "2026-09-01T13:03:46",
+    "sectors": [
+      {
+        "etf": "XLE",
+        "name": "Energy",
+        "pct": 2.04
+      },
+      {
+        "etf": "XLK",
+        "name": "Technology",
+        "pct": 0.44
+      },
+      {
+        "etf": "XLV",
+        "name": "Health Care",
+        "pct": -0.36
+      },
+      {
+        "etf": "XLY",
+        "name": "Consumer Discretionary",
+        "pct": -0.53
+      },
+      {
+        "etf": "XLP",
+        "name": "Consumer Staples",
+        "pct": -0.55
+      },
+      {
+        "etf": "XLF",
+        "name": "Financials",
+        "pct": -0.67
+      },
+      {
+        "etf": "XLRE",
+        "name": "Real Estate",
+        "pct": -0.83
+      },
+      {
+        "etf": "XLB",
+        "name": "Materials",
+        "pct": -0.92
+      },
+      {
+        "etf": "XLI",
+        "name": "Industrials",
+        "pct": -1.13
+      },
+      {
+        "etf": "XLU",
+        "name": "Utilities",
+        "pct": -1.17
+      },
+      {
+        "etf": "XLC",
+        "name": "Communication Services",
+        "pct": -1.35
+      }
+    ],
+    "movers": {
+      "gainers": [
+        {
+          "symbol": "AEHL",
+          "pct": 83.33,
+          "last": 6.49
+        },
+        {
+          "symbol": "USDE",
+          "pct": 31.21,
+          "last": 8.87
+        },
+        {
+          "symbol": "DPRO",
+          "pct": 21.39,
+          "last": 5.42
+        },
+        {
+          "symbol": "CRCG",
+          "pct": 19.32,
+          "last": 17.48
+        },
+        {
+          "symbol": "STDN",
+          "pct": 14.26,
+          "last": 16.11
+        }
+      ],
+      "losers": [
+        {
+          "symbol": "EIX",
+          "pct": -23.07,
+          "last": 53.98
+        },
+        {
+          "symbol": "PCG",
+          "pct": -20.06,
+          "last": 13.27
+        },
+        {
+          "symbol": "PCGpX",
+          "pct": -16.47,
+          "last": 33.88
+        },
+        {
+          "symbol": "BMNZ",
+          "pct": -13.66,
+          "last": 5.75
+        },
+        {
+          "symbol": "VCX",
+          "pct": -12.22,
+          "last": 34.97
+        }
+      ]
+    },
+    "breadth": {
+      "advancers": 703,
+      "decliners": 1263,
+      "unchanged": 30,
+      "ad_ratio": 0.56,
+      "universe_size": 1996,
+      "scope": "price\u2265$5, vol\u22651,000,000",
+      "session_date": "2026-08-31"
+    },
+    "trend": {
+      "ticker": "SPY",
+      "price": 767.05,
+      "sma_50": 754.36,
+      "pct_above": 1.68,
+      "above_50dma": true
+    }
+  }
+}

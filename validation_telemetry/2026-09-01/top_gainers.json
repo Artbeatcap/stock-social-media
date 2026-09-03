@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-01",
+  "movers": [
+    {
+      "ticker": "BIAF",
+      "change_percentage": 44.52,
+      "price": 6.59,
+      "catalyst": "12 Health Care Stocks Moving In Friday's Pre-Market Session",
+      "volume": null
+    },
+    {
+      "ticker": "RDAC",
+      "change_percentage": 41.45,
+      "price": 6.45,
+      "catalyst": "HZJL Cayman Limited Announces Entering into a Merger Agreement with Rising Dragon Acquisition Corporation",
+      "volume": null
+    },
+    {
+      "ticker": "FRVO",
+      "change_percentage": 28.41,
+      "price": 19.75,
+      "catalyst": "Google Just Locked Up the Largest Geothermal Power Deal Ever Made.",
+      "volume": null
+    },
+    {
+      "ticker": "BMNZ",
+      "change_percentage": 16.35,
+      "price": 6.69,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "PXS",
+      "change_percentage": 16.23,
+      "price": 6.23,
+      "catalyst": "Dry Bulk, Gas (LNG/LPG), and Tanker Shipping Industry Leaders Presenting at the 20th Annual Capital Link International Shipping Forum - Mond",
+      "volume": null
+    }
+  ]
+}
