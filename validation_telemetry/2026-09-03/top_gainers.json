@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-03",
+  "movers": [
+    {
+      "ticker": "CHPT",
+      "change_percentage": 74.95,
+      "price": 9.08,
+      "catalyst": "Stock Market Today: Dow Jones, S&P 500 Futures Rise As JD Vance Touts 'Good Deal' If Iran Meets US 'Red Lines'\u2014Sana, Chevron In Focus",
+      "volume": null
+    },
+    {
+      "ticker": "TANH",
+      "change_percentage": 66.94,
+      "price": 19.19,
+      "catalyst": "Tantech Holdings Ltd Announces Notice of Allowance from U.S. Patent and Trademark Office for Hanging Cabinet Design Patent",
+      "volume": null
+    },
+    {
+      "ticker": "AEHL",
+      "change_percentage": 37.2,
+      "price": 7.45,
+      "catalyst": "Stock Market Today: Dow, Nasdaq Futures Fall As Trump Rejects 'Totally Unacceptable' Iran Peace Proposal\u2014Micron, Moderna In Focus (UPDATED)",
+      "volume": null
+    },
+    {
+      "ticker": "MSTX",
+      "change_percentage": 34.97,
+      "price": 17.33,
+      "catalyst": "Tidal Trust II Announces Name Change of STKD Bitcoin & Gold ETF",
+      "volume": null
+    },
+    {
+      "ticker": "MSTU",
+      "change_percentage": 34.95,
+      "price": 37.65,
+      "catalyst": "MicroStrategy Supercharges AI, Unveils Updates To MicroStrategy ONE",
+      "volume": null
+    }
+  ]
+}

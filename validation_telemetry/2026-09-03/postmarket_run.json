@@ -1,0 +1,223 @@
+{
+  "date": "2026-09-03",
+  "time_period": "postmarket",
+  "recorded_at": "2026-09-04T09:05:07-04:00",
+  "top_gainers": [
+    {
+      "ticker": "CHPT",
+      "change_percentage": 74.95,
+      "price": 9.08,
+      "catalyst": "Stock Market Today: Dow Jones, S&P 500 Futures Rise As JD Vance Touts 'Good Deal' If Iran Meets US 'Red Lines'\u2014Sana, Chevron In Focus",
+      "volume": null
+    },
+    {
+      "ticker": "TANH",
+      "change_percentage": 66.94,
+      "price": 19.19,
+      "catalyst": "Tantech Holdings Ltd Announces Notice of Allowance from U.S. Patent and Trademark Office for Hanging Cabinet Design Patent",
+      "volume": null
+    },
+    {
+      "ticker": "AEHL",
+      "change_percentage": 37.2,
+      "price": 7.45,
+      "catalyst": "Stock Market Today: Dow, Nasdaq Futures Fall As Trump Rejects 'Totally Unacceptable' Iran Peace Proposal\u2014Micron, Moderna In Focus (UPDATED)",
+      "volume": null
+    },
+    {
+      "ticker": "MSTX",
+      "change_percentage": 34.97,
+      "price": 17.33,
+      "catalyst": "Tidal Trust II Announces Name Change of STKD Bitcoin & Gold ETF",
+      "volume": null
+    },
+    {
+      "ticker": "MSTU",
+      "change_percentage": 34.95,
+      "price": 37.65,
+      "catalyst": "MicroStrategy Supercharges AI, Unveils Updates To MicroStrategy ONE",
+      "volume": null
+    }
+  ],
+  "top_losers": [
+    {
+      "ticker": "RARE",
+      "change_percentage": -44.03,
+      "price": 14.85,
+      "catalyst": "Fabry Disease Treatment Market 2026-2031 - Growth Driven by Increasing Adoption of Enzyme Replacement Therapy",
+      "volume": null
+    },
+    {
+      "ticker": "SMST",
+      "change_percentage": -35.12,
+      "price": 17.96,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "PSNY",
+      "change_percentage": -27.52,
+      "price": 8.69,
+      "catalyst": "Rivian Doesn't Get Enough Credit for Crushing Rivals in This Metric",
+      "volume": null
+    },
+    {
+      "ticker": "SGLD",
+      "change_percentage": -20.75,
+      "price": 5.73,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "PSQL",
+      "change_percentage": -20.02,
+      "price": 9.75,
+      "catalyst": "",
+      "volume": null
+    }
+  ],
+  "featured_mover": {
+    "ticker": "CHPT",
+    "symbol": "CHPT",
+    "change_percentage": 0.0,
+    "price": 9.08,
+    "last": 9.08,
+    "catalyst": "Stock Market Today: Dow Jones, S&P 500 Futures Rise As JD Vance Touts 'Good Deal' If Iran Meets US 'Red Lines'\u2014Sana, Chevron In Focus",
+    "volume": 0
+  },
+  "featured_stock": "CHPT",
+  "post": "Bootstrapped telemetry for catalyst audit (2026-09-03)",
+  "style": "bootstrap",
+  "market_internals": {
+    "as_of": "2026-09-04T13:05:06",
+    "sectors": [
+      {
+        "etf": "XLF",
+        "name": "Financials",
+        "pct": 1.56
+      },
+      {
+        "etf": "XLY",
+        "name": "Consumer Discretionary",
+        "pct": 1.39
+      },
+      {
+        "etf": "XLK",
+        "name": "Technology",
+        "pct": 1.29
+      },
+      {
+        "etf": "XLRE",
+        "name": "Real Estate",
+        "pct": 1.19
+      },
+      {
+        "etf": "XLI",
+        "name": "Industrials",
+        "pct": 1.03
+      },
+      {
+        "etf": "XLC",
+        "name": "Communication Services",
+        "pct": 0.85
+      },
+      {
+        "etf": "XLU",
+        "name": "Utilities",
+        "pct": 0.84
+      },
+      {
+        "etf": "XLV",
+        "name": "Health Care",
+        "pct": 0.18
+      },
+      {
+        "etf": "XLP",
+        "name": "Consumer Staples",
+        "pct": -0.32
+      },
+      {
+        "etf": "XLB",
+        "name": "Materials",
+        "pct": -0.62
+      },
+      {
+        "etf": "XLE",
+        "name": "Energy",
+        "pct": -0.74
+      }
+    ],
+    "movers": {
+      "gainers": [
+        {
+          "symbol": "CHPT",
+          "pct": 74.95,
+          "last": 9.08
+        },
+        {
+          "symbol": "TANH",
+          "pct": 66.94,
+          "last": 19.19
+        },
+        {
+          "symbol": "AEHL",
+          "pct": 37.2,
+          "last": 7.45
+        },
+        {
+          "symbol": "MSTX",
+          "pct": 34.97,
+          "last": 17.33
+        },
+        {
+          "symbol": "MSTU",
+          "pct": 34.95,
+          "last": 37.65
+        }
+      ],
+      "losers": [
+        {
+          "symbol": "RARE",
+          "pct": -44.03,
+          "last": 14.85
+        },
+        {
+          "symbol": "SMST",
+          "pct": -35.12,
+          "last": 17.96
+        },
+        {
+          "symbol": "PSNY",
+          "pct": -27.52,
+          "last": 8.69
+        },
+        {
+          "symbol": "SGLD",
+          "pct": -20.75,
+          "last": 5.73
+        },
+        {
+          "symbol": "PSQL",
+          "pct": -20.02,
+          "last": 9.75
+        }
+      ]
+    },
+    "breadth": {
+      "advancers": 1269,
+      "decliners": 617,
+      "unchanged": 26,
+      "ad_ratio": 2.06,
+      "universe_size": 1912,
+      "scope": "price\u2265$5, vol\u22651,000,000",
+      "session_date": "2026-09-03"
+    },
+    "trend": {
+      "ticker": "SPY",
+      "price": 773.17,
+      "sma_50": 756.14,
+      "pct_above": 2.25,
+      "above_50dma": true
+    }
+  }
+}

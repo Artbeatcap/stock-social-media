@@ -1,0 +1,223 @@
+{
+  "date": "2026-09-01",
+  "time_period": "postmarket",
+  "recorded_at": "2026-09-02T09:03:37-04:00",
+  "top_gainers": [
+    {
+      "ticker": "BIAF",
+      "change_percentage": 44.52,
+      "price": 6.59,
+      "catalyst": "12 Health Care Stocks Moving In Friday's Pre-Market Session",
+      "volume": null
+    },
+    {
+      "ticker": "RDAC",
+      "change_percentage": 41.45,
+      "price": 6.45,
+      "catalyst": "HZJL Cayman Limited Announces Entering into a Merger Agreement with Rising Dragon Acquisition Corporation",
+      "volume": null
+    },
+    {
+      "ticker": "FRVO",
+      "change_percentage": 28.41,
+      "price": 19.75,
+      "catalyst": "Google Just Locked Up the Largest Geothermal Power Deal Ever Made.",
+      "volume": null
+    },
+    {
+      "ticker": "BMNZ",
+      "change_percentage": 16.35,
+      "price": 6.69,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "PXS",
+      "change_percentage": 16.23,
+      "price": 6.23,
+      "catalyst": "Dry Bulk, Gas (LNG/LPG), and Tanker Shipping Industry Leaders Presenting at the 20th Annual Capital Link International Shipping Forum - Mond",
+      "volume": null
+    }
+  ],
+  "top_losers": [
+    {
+      "ticker": "ALMS",
+      "change_percentage": -56.58,
+      "price": 9.47,
+      "catalyst": "Alumis Stock Has Soared 400%. Cormorant Bought Another $8 Million Last Quarter",
+      "volume": null
+    },
+    {
+      "ticker": "CRDU",
+      "change_percentage": -17.04,
+      "price": 11.44,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "ENOV",
+      "change_percentage": -16.51,
+      "price": 20.53,
+      "catalyst": "4 Top Growth Stocks Worth Buying Under $100 Today",
+      "volume": null
+    },
+    {
+      "ticker": "ONDL",
+      "change_percentage": -15.82,
+      "price": 5.11,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "BMNU",
+      "change_percentage": -15.2,
+      "price": 17.52,
+      "catalyst": "",
+      "volume": null
+    }
+  ],
+  "featured_mover": {
+    "ticker": "BIAF",
+    "symbol": "BIAF",
+    "change_percentage": 0.0,
+    "price": 6.59,
+    "last": 6.59,
+    "catalyst": "12 Health Care Stocks Moving In Friday's Pre-Market Session",
+    "volume": 0
+  },
+  "featured_stock": "BIAF",
+  "post": "Bootstrapped telemetry for catalyst audit (2026-09-01)",
+  "style": "bootstrap",
+  "market_internals": {
+    "as_of": "2026-09-02T13:03:36",
+    "sectors": [
+      {
+        "etf": "XLE",
+        "name": "Energy",
+        "pct": 1.27
+      },
+      {
+        "etf": "XLU",
+        "name": "Utilities",
+        "pct": 0.78
+      },
+      {
+        "etf": "XLV",
+        "name": "Health Care",
+        "pct": 0.66
+      },
+      {
+        "etf": "XLP",
+        "name": "Consumer Staples",
+        "pct": 0.32
+      },
+      {
+        "etf": "XLRE",
+        "name": "Real Estate",
+        "pct": -0.16
+      },
+      {
+        "etf": "XLC",
+        "name": "Communication Services",
+        "pct": -0.52
+      },
+      {
+        "etf": "XLF",
+        "name": "Financials",
+        "pct": -0.88
+      },
+      {
+        "etf": "XLB",
+        "name": "Materials",
+        "pct": -1.18
+      },
+      {
+        "etf": "XLI",
+        "name": "Industrials",
+        "pct": -1.37
+      },
+      {
+        "etf": "XLK",
+        "name": "Technology",
+        "pct": -1.53
+      },
+      {
+        "etf": "XLY",
+        "name": "Consumer Discretionary",
+        "pct": -1.72
+      }
+    ],
+    "movers": {
+      "gainers": [
+        {
+          "symbol": "BIAF",
+          "pct": 44.52,
+          "last": 6.59
+        },
+        {
+          "symbol": "RDAC",
+          "pct": 41.45,
+          "last": 6.45
+        },
+        {
+          "symbol": "FRVO",
+          "pct": 28.41,
+          "last": 19.75
+        },
+        {
+          "symbol": "BMNZ",
+          "pct": 16.35,
+          "last": 6.69
+        },
+        {
+          "symbol": "PXS",
+          "pct": 16.23,
+          "last": 6.23
+        }
+      ],
+      "losers": [
+        {
+          "symbol": "ALMS",
+          "pct": -56.58,
+          "last": 9.47
+        },
+        {
+          "symbol": "CRDU",
+          "pct": -17.04,
+          "last": 11.44
+        },
+        {
+          "symbol": "ENOV",
+          "pct": -16.51,
+          "last": 20.53
+        },
+        {
+          "symbol": "ONDL",
+          "pct": -15.82,
+          "last": 5.11
+        },
+        {
+          "symbol": "BMNU",
+          "pct": -15.2,
+          "last": 17.52
+        }
+      ]
+    },
+    "breadth": {
+      "advancers": 536,
+      "decliners": 1424,
+      "unchanged": 20,
+      "ad_ratio": 0.38,
+      "universe_size": 1980,
+      "scope": "price\u2265$5, vol\u22651,000,000",
+      "session_date": "2026-09-01"
+    },
+    "trend": {
+      "ticker": "SPY",
+      "price": 761.78,
+      "sma_50": 754.71,
+      "pct_above": 0.94,
+      "above_50dma": true
+    }
+  }
+}

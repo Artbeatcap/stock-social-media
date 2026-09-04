@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-02",
+  "movers": [
+    {
+      "ticker": "CRDU",
+      "change_percentage": -40.12,
+      "price": 6.85,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "CRDO",
+      "change_percentage": -20.04,
+      "price": 165.22,
+      "catalyst": "3 Millionaire-Maker Artificial Intelligence (AI) Stocks to Buy Now",
+      "volume": null
+    },
+    {
+      "ticker": "FCEL",
+      "change_percentage": -15.69,
+      "price": 14.4,
+      "catalyst": "Super Micro Computer and Albertsons Companies have been highlighted as Zacks Bull and Bear of the Day",
+      "volume": null
+    },
+    {
+      "ticker": "IREZ",
+      "change_percentage": -15.08,
+      "price": 11.32,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "MDB",
+      "change_percentage": -13.54,
+      "price": 375.4,
+      "catalyst": "MongoDB Stock: Buy or Sell?",
+      "volume": null
+    }
+  ]
+}
