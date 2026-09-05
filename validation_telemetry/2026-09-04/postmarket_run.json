@@ -1,0 +1,223 @@
+{
+  "date": "2026-09-04",
+  "time_period": "postmarket",
+  "recorded_at": "2026-09-05T09:03:32-04:00",
+  "top_gainers": [
+    {
+      "ticker": "AOUT",
+      "change_percentage": 44.66,
+      "price": 14.48,
+      "catalyst": "American Outdoor Brands, Inc. (AOUT) Q1 Earnings and Revenues Beat Estimates",
+      "volume": null
+    },
+    {
+      "ticker": "AEHG",
+      "change_percentage": 25.67,
+      "price": 7.05,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "SNDG",
+      "change_percentage": 24.08,
+      "price": 10.77,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "SNDU",
+      "change_percentage": 23.62,
+      "price": 26.95,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "SNXX",
+      "change_percentage": 23.38,
+      "price": 17.36,
+      "catalyst": "",
+      "volume": null
+    }
+  ],
+  "top_losers": [
+    {
+      "ticker": "SNDQ",
+      "change_percentage": -23.8,
+      "price": 11.78,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "CBRZ",
+      "change_percentage": -20.79,
+      "price": 8.0,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "GWRE",
+      "change_percentage": -19.93,
+      "price": 162.42,
+      "catalyst": "Guidewire Software (GWRE) Q4 Earnings Preview: What You Should Know Beyond the Headline Estimates",
+      "volume": null
+    },
+    {
+      "ticker": "PSQL",
+      "change_percentage": -18.36,
+      "price": 7.96,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "EGAN",
+      "change_percentage": -17.86,
+      "price": 5.84,
+      "catalyst": "eGain to Announce Fiscal 2026 Fourth Quarter and Full Year Financial Results on September 3, 2026",
+      "volume": null
+    }
+  ],
+  "featured_mover": {
+    "ticker": "AOUT",
+    "symbol": "AOUT",
+    "change_percentage": 0.0,
+    "price": 14.48,
+    "last": 14.48,
+    "catalyst": "American Outdoor Brands, Inc. (AOUT) Q1 Earnings and Revenues Beat Estimates",
+    "volume": 0
+  },
+  "featured_stock": "AOUT",
+  "post": "Bootstrapped telemetry for catalyst audit (2026-09-04)",
+  "style": "bootstrap",
+  "market_internals": {
+    "as_of": "2026-09-05T13:03:31",
+    "sectors": [
+      {
+        "etf": "XLK",
+        "name": "Technology",
+        "pct": 0.7
+      },
+      {
+        "etf": "XLI",
+        "name": "Industrials",
+        "pct": 0.41
+      },
+      {
+        "etf": "XLU",
+        "name": "Utilities",
+        "pct": 0.12
+      },
+      {
+        "etf": "XLB",
+        "name": "Materials",
+        "pct": -0.34
+      },
+      {
+        "etf": "XLRE",
+        "name": "Real Estate",
+        "pct": -0.72
+      },
+      {
+        "etf": "XLF",
+        "name": "Financials",
+        "pct": -0.79
+      },
+      {
+        "etf": "XLP",
+        "name": "Consumer Staples",
+        "pct": -0.8
+      },
+      {
+        "etf": "XLE",
+        "name": "Energy",
+        "pct": -0.87
+      },
+      {
+        "etf": "XLV",
+        "name": "Health Care",
+        "pct": -1.04
+      },
+      {
+        "etf": "XLC",
+        "name": "Communication Services",
+        "pct": -1.19
+      },
+      {
+        "etf": "XLY",
+        "name": "Consumer Discretionary",
+        "pct": -1.33
+      }
+    ],
+    "movers": {
+      "gainers": [
+        {
+          "symbol": "AOUT",
+          "pct": 44.66,
+          "last": 14.48
+        },
+        {
+          "symbol": "AEHG",
+          "pct": 25.67,
+          "last": 7.05
+        },
+        {
+          "symbol": "SNDG",
+          "pct": 24.08,
+          "last": 10.77
+        },
+        {
+          "symbol": "SNDU",
+          "pct": 23.62,
+          "last": 26.95
+        },
+        {
+          "symbol": "SNXX",
+          "pct": 23.38,
+          "last": 17.36
+        }
+      ],
+      "losers": [
+        {
+          "symbol": "SNDQ",
+          "pct": -23.8,
+          "last": 11.78
+        },
+        {
+          "symbol": "CBRZ",
+          "pct": -20.79,
+          "last": 8.0
+        },
+        {
+          "symbol": "GWRE",
+          "pct": -19.93,
+          "last": 162.42
+        },
+        {
+          "symbol": "PSQL",
+          "pct": -18.36,
+          "last": 7.96
+        },
+        {
+          "symbol": "EGAN",
+          "pct": -17.86,
+          "last": 5.84
+        }
+      ]
+    },
+    "breadth": {
+      "advancers": 830,
+      "decliners": 919,
+      "unchanged": 32,
+      "ad_ratio": 0.9,
+      "universe_size": 1781,
+      "scope": "price\u2265$5, vol\u22651,000,000",
+      "session_date": "2026-09-04"
+    },
+    "trend": {
+      "ticker": "SPY",
+      "price": 770.19,
+      "sma_50": 756.86,
+      "pct_above": 1.76,
+      "above_50dma": true
+    }
+  }
+}

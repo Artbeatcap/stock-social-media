@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-04",
+  "movers": [
+    {
+      "ticker": "AOUT",
+      "change_percentage": 44.66,
+      "price": 14.48,
+      "catalyst": "American Outdoor Brands, Inc. (AOUT) Q1 Earnings and Revenues Beat Estimates",
+      "volume": null
+    },
+    {
+      "ticker": "AEHG",
+      "change_percentage": 25.67,
+      "price": 7.05,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "SNDG",
+      "change_percentage": 24.08,
+      "price": 10.77,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "SNDU",
+      "change_percentage": 23.62,
+      "price": 26.95,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "SNXX",
+      "change_percentage": 23.38,
+      "price": 17.36,
+      "catalyst": "",
+      "volume": null
+    }
+  ]
+}
