@@ -224,6 +224,11 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Validation telemetry (generated at runtime on prod)
+validation_telemetry/*/
+validation_telemetry/reports/*.md
+validation_telemetry/research_log/*.md
+
 # OS
 .DS_Store
 Thumbs.db
