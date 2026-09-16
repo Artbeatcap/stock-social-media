@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import logging
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -94,7 +95,8 @@ def main() -> int:
         logger.info("Weekend — skipping catalyst quality audits")
         return 0
 
-    tasks = _tasks_for_now(now, args.task)
+    forced = args.task or os.getenv("CATALYST_QUALITY_AUDIT_TASK")
+    tasks = _tasks_for_now(now, forced)
     if not tasks:
         logger.info(
             "No audit scheduled for %s ET (featured at 17:30, recall at 21:15)",
