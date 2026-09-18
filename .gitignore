@@ -224,6 +224,11 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Generated validation telemetry (keep directory structure via .gitkeep)
+validation_telemetry/*/
+validation_telemetry/reports/*.md
+validation_telemetry/research_log/*.md
+
 # OS
 .DS_Store
 Thumbs.db
