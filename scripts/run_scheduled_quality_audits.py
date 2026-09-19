@@ -91,15 +91,15 @@ def main() -> int:
     args = parser.parse_args()
 
     now = datetime.now(NY)
-    if now.weekday() >= 5:
-        logger.info("Weekend — skipping catalyst quality audits")
-        return 0
-
     forced = args.task or os.getenv("CATALYST_QUALITY_AUDIT_TASK")
+    if now.weekday() >= 5 and not forced:
+        logger.info("Weekend — skipping catalyst quality audits (use --task or CATALYST_QUALITY_AUDIT_TASK to override)")
+        return 0
     tasks = _tasks_for_now(now, forced)
     if not tasks:
         logger.info(
-            "No audit scheduled for %s ET (featured at 17:30, recall at 21:15)",
+            "No audit scheduled for %s ET (featured at 17:30, recall at 21:15; "
+            "set CATALYST_QUALITY_AUDIT_TASK=all for off-schedule runs)",
             now.strftime("%H:%M"),
         )
         return 0
