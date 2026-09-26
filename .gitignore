@@ -224,6 +224,15 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Production validation telemetry (snapshots + generated audit output)
+validation_telemetry/*/
+!validation_telemetry/reports/
+!validation_telemetry/research_log/
+validation_telemetry/reports/*
+!validation_telemetry/reports/.gitkeep
+validation_telemetry/research_log/*
+!validation_telemetry/research_log/.gitkeep
+
 # OS
 .DS_Store
 Thumbs.db
