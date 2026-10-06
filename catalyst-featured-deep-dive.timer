@@ -1,0 +1,9 @@
+[Unit]
+Description=Weekday featured mover deep dive (5:30pm ET)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 17:30:00 America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target
