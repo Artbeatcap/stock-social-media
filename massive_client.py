@@ -423,6 +423,114 @@ def fetch_news() -> List[Dict[str, Any]]:
     return get_market_news(limit=20)
 
 
+def get_minute_bars_for_date(symbol: str, trade_date: date) -> list[dict[str, Any]]:
+    """Return 1-minute OHLCV bars for one calendar day (ET)."""
+    massive_symbol = INDEX_SYMBOLS.get(symbol.upper(), symbol.upper())
+    data = _request(
+        f"/v2/aggs/ticker/{massive_symbol}/range/1/minute/{trade_date.isoformat()}/{trade_date.isoformat()}",
+        {"adjusted": "true", "sort": "asc", "limit": 5000},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        bars.append(
+            {
+                "t": ts_ms,
+                "open": _as_float(item.get("o")),
+                "high": _as_float(item.get("h")),
+                "low": _as_float(item.get("l")),
+                "close": _as_float(item.get("c")),
+                "volume": _as_int(item.get("v")),
+            }
+        )
+    return bars
+
+
+def find_largest_intraday_move(
+    bars: list[dict[str, Any]],
+    news_items: Optional[list[dict[str, Any]]] = None,
+) -> Optional[dict[str, Any]]:
+    """Pick the largest absolute 1m close-to-close move and optional nearest headline."""
+    if not bars:
+        return None
+    best: Optional[dict[str, Any]] = None
+    prev_close = None
+    for bar in bars:
+        close = _as_float(bar.get("close"))
+        if prev_close is not None and prev_close > 0:
+            pct = (close - prev_close) / prev_close * 100.0
+            if best is None or abs(pct) > abs(best["pct_change"]):
+                ts_ms = _as_int(bar.get("t"))
+                dt = datetime.fromtimestamp(ts_ms / 1000, tz=NY)
+                best = {
+                    "time_et": dt.strftime("%H:%M ET"),
+                    "timestamp": int(dt.timestamp()),
+                    "pct_change": pct,
+                    "volume": _as_int(bar.get("volume")),
+                }
+        prev_close = close
+    if not best:
+        return None
+
+    if news_items:
+        target = best["timestamp"]
+        nearest = None
+        nearest_delta = None
+        for item in news_items:
+            ts = int(item.get("datetime") or 0)
+            if not ts:
+                continue
+            delta = abs(ts - target)
+            if delta <= 2 * 3600 and (nearest_delta is None or delta < nearest_delta):
+                nearest_delta = delta
+                nearest = str(item.get("headline") or "")
+        if nearest:
+            best["nearest_headline"] = nearest
+    return best
+
+
+def analyze_options_chain(underlying: str, limit: int = 80) -> str:
+    """
+    Summarize options snapshot for unusual IV / OI. May return tier-limit note on 403.
+    """
+    sym = underlying.upper()
+    data = _request(
+        "/v3/snapshot/options/" + sym,
+        {"limit": limit},
+    )
+    if not data:
+        return "_Options snapshot unavailable (tier or API error)._"
+    if data.get("status") == "ERROR" or data.get("error"):
+        return f"_Options snapshot error: {data.get('error') or data.get('message') or 'unknown'}_"
+
+    results = data.get("results") or data.get("options") or []
+    if isinstance(results, dict):
+        results = list(results.values())
+    if not results:
+        return "_No options contracts returned._"
+
+    scored: list[tuple[float, dict[str, Any]]] = []
+    for raw in results[:limit]:
+        details = raw.get("details") or raw
+        day = raw.get("day") or {}
+        greeks = raw.get("greeks") or {}
+        oi = _as_int(details.get("open_interest") or raw.get("open_interest"))
+        iv = _as_float(greeks.get("implied_volatility") or raw.get("implied_volatility"))
+        strike = _as_float(details.get("strike_price") or raw.get("strike_price"))
+        ctype = str(details.get("contract_type") or raw.get("contract_type") or "")
+        vol = _as_int(day.get("volume") or raw.get("volume"))
+        score = oi + vol * 10 + iv * 1000
+        scored.append((score, {"strike": strike, "type": ctype, "oi": oi, "iv": iv, "vol": vol}))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    lines = ["Top contracts by OI/volume/IV proxy:"]
+    for _, row in scored[:5]:
+        lines.append(
+            f"- {row['type']} ${row['strike']:.2f}: OI {row['oi']:,}, vol {row['vol']:,}, IV {row['iv']:.2f}"
+        )
+    return "\n".join(lines)
+
+
 def _tradier_history_daily(symbol: str, start_d: date, end_d: date) -> list[dict[str, Any]]:
     return get_daily_history(symbol, start_d, end_d)
 
