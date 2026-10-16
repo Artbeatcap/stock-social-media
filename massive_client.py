@@ -301,7 +301,8 @@ def _normalize_news_item(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def get_news_for_ticker(ticker: str, limit: int = 5) -> list[dict[str, Any]]:
+def get_news_for_ticker_raw(ticker: str, limit: int = 25) -> list[dict[str, Any]]:
+    """Return raw Massive news API rows (for audit scoring / insights)."""
     data = _request(
         "/v2/reference/news",
         {
@@ -311,7 +312,11 @@ def get_news_for_ticker(ticker: str, limit: int = 5) -> list[dict[str, Any]]:
             "sort": "published_utc",
         },
     )
-    return [_normalize_news_item(item) for item in data.get("results", [])[:limit]]
+    return list(data.get("results", []) or [])[:limit]
+
+
+def get_news_for_ticker(ticker: str, limit: int = 5) -> list[dict[str, Any]]:
+    return [_normalize_news_item(item) for item in get_news_for_ticker_raw(ticker, limit=limit)[:limit]]
 
 
 def get_market_news(limit: int = 20) -> list[dict[str, Any]]:
@@ -429,6 +434,121 @@ def _tradier_history_daily(symbol: str, start_d: date, end_d: date) -> list[dict
 
 def _tradier_timesales_volume(symbol: str, start_dt: datetime, end_dt: datetime) -> int:
     return get_extended_hours_volume(symbol, start_dt, end_dt)
+
+
+def get_minute_bars_for_date(symbol: str, trade_date: date) -> list[dict[str, Any]]:
+    """Intraday 1-minute OHLCV bars for one session date."""
+    massive_symbol = INDEX_SYMBOLS.get(symbol.upper(), symbol.upper())
+    data = _request(
+        f"/v2/aggs/ticker/{massive_symbol}/range/1/minute/{trade_date.isoformat()}/{trade_date.isoformat()}",
+        {"adjusted": "true", "sort": "asc", "limit": 50000},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        if not ts_ms:
+            continue
+        bar_dt = datetime.fromtimestamp(ts_ms / 1000, tz=NY)
+        o, c = _as_float(item.get("o")), _as_float(item.get("c"))
+        pct = ((c - o) / o * 100.0) if o else 0.0
+        bars.append(
+            {
+                "t": ts_ms,
+                "time_et": bar_dt.strftime("%Y-%m-%d %H:%M:%S ET"),
+                "open": o,
+                "high": _as_float(item.get("h")),
+                "low": _as_float(item.get("l")),
+                "close": c,
+                "volume": _as_int(item.get("v")),
+                "pct_change": pct,
+            }
+        )
+    return bars
+
+
+def find_largest_intraday_move(symbol: str, trade_date: date) -> Optional[dict[str, Any]]:
+    bars = get_minute_bars_for_date(symbol, trade_date)
+    if not bars:
+        return None
+    best = max(bars, key=lambda b: abs(b.get("pct_change") or 0))
+    session_open = bars[0]["open"]
+    session_close = bars[-1]["close"]
+    session_pct = ((session_close - session_open) / session_open * 100.0) if session_open else None
+    return {
+        "bar_time_et": best["time_et"],
+        "pct_change": best["pct_change"],
+        "open": best["open"],
+        "high": best["high"],
+        "low": best["low"],
+        "close": best["close"],
+        "volume": best["volume"],
+        "session_pct": session_pct,
+    }
+
+
+def get_options_chain_snapshot(underlying: str, limit: int = 100) -> list[dict[str, Any]]:
+    """Options chain snapshot; may be empty on lower API tiers."""
+    sym = underlying.upper()
+    data = _request(f"/v3/snapshot/options/{sym}", {"limit": limit})
+    if data:
+        results = data.get("results") or data.get("contracts") or []
+        if isinstance(results, list) and results:
+            return results
+    data = _request("/v3/snapshot/options", {"underlying_asset": sym, "limit": limit})
+    results = data.get("results") or []
+    return list(results)[:limit] if isinstance(results, list) else []
+
+
+def analyze_options_chain(underlying: str) -> dict[str, Any]:
+    contracts = get_options_chain_snapshot(underlying, limit=150)
+    if not contracts:
+        return {
+            "error": "Options chain unavailable (tier-gated or no data for symbol).",
+        }
+
+    ivs: list[float] = []
+    ois: list[float] = []
+    flags: list[str] = []
+    for row in contracts:
+        details = row.get("details") or row
+        iv = _as_float(
+            row.get("implied_volatility")
+            or details.get("implied_volatility")
+            or (row.get("greeks") or {}).get("iv")
+        )
+        oi = _as_float(row.get("open_interest") or details.get("open_interest"))
+        if iv > 0:
+            ivs.append(iv)
+        if oi > 0:
+            ois.append(oi)
+
+    if not ivs and not ois:
+        return {
+            "note": "Chain returned but IV/OI fields missing on this tier.",
+            "flags": [],
+        }
+
+    import statistics
+
+    iv_med = statistics.median(ivs) if ivs else 0.0
+    oi_med = statistics.median(ois) if ois else 0.0
+    for row in contracts:
+        details = row.get("details") or row
+        strike = details.get("strike_price") or row.get("strike_price")
+        ctype = details.get("contract_type") or row.get("contract_type") or ""
+        iv = _as_float(
+            row.get("implied_volatility")
+            or details.get("implied_volatility")
+            or (row.get("greeks") or {}).get("iv")
+        )
+        oi = _as_float(row.get("open_interest") or details.get("open_interest"))
+        if iv_med and iv >= iv_med * 1.35:
+            flags.append(f"Elevated IV at {ctype} {strike}: {iv:.2f} vs median {iv_med:.2f}")
+        if oi_med and oi >= oi_med * 2.5 and oi >= 500:
+            flags.append(f"OI buildup at {ctype} {strike}: {int(oi):,} vs median {int(oi_med):,}")
+
+    flags = flags[:8]
+    return {"flags": flags, "note": None}
 
 
 def healthcheck() -> bool:
