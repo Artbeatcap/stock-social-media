@@ -218,6 +218,15 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Catalyst audit outputs (snapshots written on prod send)
+validation_telemetry/*
+!validation_telemetry/reports/
+!validation_telemetry/research_log/
+validation_telemetry/reports/*
+!validation_telemetry/reports/.gitkeep
+validation_telemetry/research_log/*
+!validation_telemetry/research_log/.gitkeep
+
 # Cursor
 #  Cursor is an AI-powered code editor. `.cursorignore` specifies files/directories to
 #  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
