@@ -1,0 +1,11 @@
+[Unit]
+Description=Catalyst recall audit (weekdays 9:15pm ET)
+Requires=catalyst-recall-audit.service
+
+[Timer]
+# 9:15 PM Eastern ≈ 01:15 UTC (EST) / 02:15 UTC (EDT) — adjust seasonally on VPS
+OnCalendar=Mon-Fri *-*-* 01:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

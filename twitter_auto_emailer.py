@@ -40,6 +40,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
+    from telemetry_snapshot import write_run_snapshot
+except Exception as e:
+    write_run_snapshot = None
+    logger.warning(f"telemetry_snapshot unavailable: {e}")
+
+try:
     from massive_client import (
         fetch_spy_qqq_data as massive_fetch_spy_qqq_data,
         fetch_top_movers_with_news as massive_fetch_top_movers_with_news,
@@ -1270,6 +1276,8 @@ def main(time_period: str = None):
     success = send_email(subject, html_content, text_content)
     
     if success:
+        if write_run_snapshot is not None:
+            write_run_snapshot(time_period, context, post_data, emailed=True)
         logger.info("✅ Twitter post email sent successfully!")
         print(f"\nSUCCESS: {time_period.title()} post emailed to {TO_EMAIL}")
         print(f"Post: {post_data['post']}")
