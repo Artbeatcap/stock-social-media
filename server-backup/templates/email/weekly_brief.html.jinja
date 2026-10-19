@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>{{ brand.name }} — Weekly Brief — {{ week_label }}</title>
+  <!--[if mso]>
+  <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+  <![endif]-->
+  <style>
+    /* Clients that honor <style> get the polish; the rest fall back to inline + table layout. */
+    body { margin:0; padding:0; background:#f4efe6; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+    table { border-collapse:collapse; }
+    img { border:0; line-height:100%; outline:none; text-decoration:none; -ms-interpolation-mode:bicubic; }
+    a { color:#4ea1ff; text-decoration:none; }
+    .px { padding-left:28px; padding-right:28px; }
+    .h1 { font-size:26px; line-height:1.2; font-weight:800; letter-spacing:-0.02em; }
+    .kicker { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; font-weight:700; }
+    .sec-title { font-size:13px; letter-spacing:0.14em; text-transform:uppercase; font-weight:700; color:#7b8aa3; }
+    .body-text { font-size:16px; line-height:1.62; color:#1f2733; }
+    .body-text p { margin:0 0 14px 0; }
+    .body-text strong { color:#0b1220; }
+    .muted { color:#8a97a8; font-size:13px; line-height:1.5; }
+    @media only screen and (max-width:620px) {
+      .px { padding-left:18px !important; padding-right:18px !important; }
+      .h1 { font-size:22px !important; }
+      .stack { display:block !important; width:100% !important; }
+      .tape-cell { padding:10px 8px !important; }
+      .sector-name { font-size:13px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#f4efe6;">
+  <!-- preheader (hidden) -->
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;height:0;width:0;">
+    {{ preheader }}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4efe6;">
+    <tr><td align="center" style="padding:24px 12px;">
+
+      <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:640px;background:#ffffff;border-radius:16px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+        <!-- ===== HEADER ===== -->
+        <tr>
+          <td style="background:#1e3a4c;background-image:linear-gradient(135deg,#1e3a4c 0%,#2f5870 100%);padding:30px 28px 24px 28px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="left" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                  <div class="kicker" style="color:#4ea1ff;">{{ brand.name }} · Weekly Brief</div>
+                  <div class="h1" style="color:#ffffff;margin-top:8px;">The Week in Markets</div>
+                  <div class="muted" style="color:#9fb0c9;margin-top:6px;font-size:13px;">{{ week_label }}</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ===== TAPE STRIP ===== -->
+        {% if tape %}
+        <tr>
+          <td style="background:#1e3a4c;padding:0 16px 22px 16px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#173246;border:1px solid #2c4a60;border-radius:12px;">
+              <tr>
+                {% for t in tape %}
+                <td class="tape-cell stack" align="center" width="25%" style="padding:14px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-left:{% if not loop.first %}1px solid #2c4a60{% else %}none{% endif %};">
+                  <div style="font-size:12px;font-weight:700;color:#9fb0c9;letter-spacing:0.06em;">{{ t.symbol }}</div>
+                  <div style="font-size:17px;font-weight:800;color:#ffffff;margin-top:3px;">{{ t.price }}</div>
+                  <div style="font-size:13px;font-weight:700;margin-top:2px;color:{% if t.pct is not none and t.pct < 0 %}#ff6b81{% elif t.pct is not none and t.pct > 0 %}#3ddc84{% else %}#9fb0c9{% endif %};">
+                    {% if t.pct is not none %}{{ '%+.2f'|format(t.pct) }}%{% else %}—{% endif %}
+                  </div>
+                </td>
+                {% endfor %}
+              </tr>
+            </table>
+            <div style="font-size:11px;color:#5d6b82;text-align:center;padding-top:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Weekly change · Mon→Fri close</div>
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- ===== MAJOR DRIVER CALLOUT ===== -->
+        {% if sections.major_driver %}
+        <tr>
+          <td class="px" style="padding-top:28px;padding-bottom:4px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f8ff;border-left:4px solid #2f6bff;border-radius:10px;">
+              <tr>
+                <td style="padding:18px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                  <div class="kicker" style="color:#2f6bff;margin-bottom:8px;">What drove the week</div>
+                  <div style="font-size:16px;line-height:1.55;color:#1a2230;font-weight:500;">{{ sections.major_driver }}</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- ===== WEEK IN REVIEW (narrative) ===== -->
+        {% if sections.week_in_review_html %}
+        <tr>
+          <td class="px" style="padding-top:26px;">
+            <div class="sec-title" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:2px solid #eef1f6;padding-bottom:8px;margin-bottom:14px;">Last Week in Review</div>
+            <div class="body-text" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">{{ sections.week_in_review_html | safe }}</div>
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- ===== SECTOR SCORECARD ===== -->
+        {% if sectors %}
+        <tr>
+          <td class="px" style="padding-top:28px;">
+            <div class="sec-title" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:2px solid #eef1f6;padding-bottom:8px;margin-bottom:14px;">Sector Scorecard</div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              {% for s in sectors %}
+              <tr>
+                <td style="padding:9px 0;border-bottom:1px solid #f0f2f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                    <td align="left" style="font-size:14px;color:#3a4658;">
+                      <span class="sector-name" style="font-weight:600;color:#1a2230;">{{ s.name }}</span>
+                      <span style="color:#9aa6b5;font-size:12px;"> · {{ s.etf }}</span>
+                    </td>
+                    <td align="right" width="120">
+                      <span style="display:inline-block;min-width:64px;text-align:right;font-size:14px;font-weight:700;color:{% if s.pct < 0 %}#e2426a{% elif s.pct > 0 %}#16a866{% else %}#7b8aa3{% endif %};">{{ '%+.2f'|format(s.pct) }}%</span>
+                    </td>
+                  </tr></table>
+                </td>
+              </tr>
+              {% endfor %}
+            </table>
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- ===== TOP MOVERS ===== -->
+        {% if movers %}
+        <tr>
+          <td class="px" style="padding-top:28px;">
+            <div class="sec-title" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:2px solid #eef1f6;padding-bottom:8px;margin-bottom:14px;">Notable Movers</div>
+            {% for m in movers %}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;background:#fafbfc;border:1px solid #eef1f6;border-radius:10px;">
+              <tr>
+                <td style="padding:13px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                  <span style="font-size:15px;font-weight:800;color:#0b1220;">${{ m.ticker }}</span>
+                  <span style="font-size:14px;font-weight:700;margin-left:8px;color:{% if m.dir == 'down' %}#e2426a{% else %}#16a866{% endif %};">{{ m.pct }}</span>
+                  {% if m.companyName %}<span style="font-size:13px;color:#78716C;margin-left:8px;">{{ m.companyName }}</span>{% endif %}
+                  {% if m.why %}<div style="font-size:14px;line-height:1.5;color:#4a586b;margin-top:5px;">{{ m.why }}</div>{% endif %}
+                </td>
+              </tr>
+            </table>
+            {% endfor %}
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- ===== LEVELS FOR THE WEEK ===== -->
+        {% if levels %}
+        <tr>
+          <td class="px" style="padding-top:28px;">
+            <div class="sec-title" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:2px solid #eef1f6;padding-bottom:8px;margin-bottom:14px;">Levels for the Week</div>
+            {% for sym, d in levels.items() %}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;background:#1e3a4c;border-radius:10px;">
+              <tr>
+                <td style="padding:14px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                  <div style="font-size:13px;font-weight:800;color:#4ea1ff;letter-spacing:0.06em;margin-bottom:8px;">{{ sym|upper }}{% if d.pivot %} · pivot {{ d.pivot }}{% endif %}</div>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                    <td width="50%" style="vertical-align:top;">
+                      <div style="font-size:11px;color:#7b8aa3;text-transform:uppercase;letter-spacing:0.08em;">Support</div>
+                      <div style="font-size:14px;color:#3ddc84;font-weight:600;margin-top:3px;">{{ d.support }}{% if d.support2 %} &nbsp;·&nbsp; {{ d.support2 }}{% endif %}</div>
+                    </td>
+                    <td width="50%" style="vertical-align:top;">
+                      <div style="font-size:11px;color:#7b8aa3;text-transform:uppercase;letter-spacing:0.08em;">Resistance</div>
+                      <div style="font-size:14px;color:#ff8a9b;font-weight:600;margin-top:3px;">{{ d.resistance }}{% if d.resistance2 %} &nbsp;·&nbsp; {{ d.resistance2 }}{% endif %}</div>
+                    </td>
+                  </tr></table>
+                </td>
+              </tr>
+            </table>
+            {% endfor %}
+            {% if sections.key_level_note %}
+            <div style="font-size:15px;line-height:1.55;color:#1f2733;margin-top:4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;"><strong style="color:#0b1220;">The line that matters:</strong> {{ sections.key_level_note }}</div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- ===== WEEK AHEAD ===== -->
+        {% if week_ahead_bullets or earnings_bullets or sections.week_ahead_html %}
+        <tr>
+          <td class="px" style="padding-top:28px;">
+            <div class="sec-title" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:2px solid #eef1f6;padding-bottom:8px;margin-bottom:14px;">The Week Ahead</div>
+            {% if sections.week_ahead_html %}
+            <div class="body-text" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;margin-bottom:12px;">{{ sections.week_ahead_html | safe }}</div>
+            {% endif %}
+            {% for b in week_ahead_bullets %}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+              <tr>
+                <td width="64" style="vertical-align:top;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                  <span style="display:inline-block;background:#eaf1ff;color:#2f6bff;font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;">{{ b.date }}</span>
+                </td>
+                <td style="vertical-align:top;font-size:14px;line-height:1.5;color:#2a3645;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                  <strong style="color:#0b1220;">{{ b.event }}</strong>{% if b.why %} — <span style="color:#5a6b80;">{{ b.why }}</span>{% endif %}
+                </td>
+              </tr>
+            </table>
+            {% endfor %}
+            {% if earnings_bullets %}
+            <div style="font-size:12px;color:#7b8aa3;text-transform:uppercase;letter-spacing:0.08em;margin:16px 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Earnings on deck</div>
+            {% for e in earnings_bullets %}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+              <tr>
+                <td width="64" style="vertical-align:top;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                  <span style="display:inline-block;background:#eaf1ff;color:#2f6bff;font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;">{{ e.date }}</span>
+                </td>
+                <td style="vertical-align:top;font-size:14px;line-height:1.5;color:#2a3645;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                  <strong style="color:#0b1220;">{{ e.event }}</strong>{% if e.why %} — <span style="color:#5a6b80;">{{ e.why }}</span>{% endif %}
+                </td>
+              </tr>
+            </table>
+            {% endfor %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- ===== THE RISK ===== -->
+        {% if sections.biggest_risk %}
+        <tr>
+          <td class="px" style="padding-top:26px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fff7f8;border-left:4px solid #e2426a;border-radius:10px;">
+              <tr>
+                <td style="padding:18px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                  <div class="kicker" style="color:#e2426a;margin-bottom:8px;">The biggest risk</div>
+                  <div style="font-size:16px;line-height:1.55;color:#1a2230;font-weight:500;">{{ sections.biggest_risk }}</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- ===== CTA ===== -->
+        <tr>
+          <td class="px" style="padding-top:30px;padding-bottom:6px;" align="center">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" style="border-radius:10px;background:#2f6bff;">
+                  <a href="{{ brand.app_url }}" style="display:inline-block;padding:14px 30px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#ffffff;border-radius:10px;">Open the {{ brand.name }} app →</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ===== DATA NOTE / DISCLAIMER ===== -->
+        <tr>
+          <td class="px" style="padding-top:24px;">
+            {% if data_stale %}
+            <div style="font-size:12px;color:#b06a00;background:#fff8e6;border:1px solid #ffe2a8;border-radius:8px;padding:10px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Some market data was unavailable at generation time; affected sections were omitted rather than estimated.</div>
+            {% endif %}
+            <div class="muted" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;margin-top:14px;font-size:12px;line-height:1.55;color:#9aa6b5;">
+              Educational market commentary, not financial advice. Levels and scenarios are analytical, not trade instructions. Figures reflect data available at {{ generated_at }}.
+            </div>
+          </td>
+        </tr>
+
+        <!-- ===== FOOTER ===== -->
+        <tr>
+          <td style="padding:22px 28px 30px 28px;border-top:1px solid #eef1f6;margin-top:10px;">
+            <div style="font-size:13px;color:#8a97a8;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <strong style="color:#5a6b80;">{{ brand.name }}</strong><br>
+              <a href="{{ preferences_url }}" style="color:#8a97a8;text-decoration:underline;">Email preferences</a> &nbsp;·&nbsp;
+              <a href="{{ unsubscribe_url }}" style="color:#8a97a8;text-decoration:underline;">Unsubscribe</a>
+            </div>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

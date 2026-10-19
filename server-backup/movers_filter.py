@@ -431,10 +431,14 @@ def select_notable_movers(
     now: Optional[datetime] = None,
     enrich_news: bool = True,
     window: str = "prior_session",
+    require_news: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Return at most 6 brief-ready movers. Empty list → omit the section.
     Never pads with the next-best junk.
+
+    require_news keeps walking the quality pool until the slots are names
+    with a headline. A move with no article does not render.
     """
     fetch_meta = fetch_meta or get_ticker_meta
     split_check = split_check or ticker_had_recent_split
@@ -483,13 +487,38 @@ def select_notable_movers(
             after_quality = len(pool)
 
     chosen = select_slots(pool)
+    if require_news:
+        chosen_ids = {s["ticker"] for s in chosen}
+        rest = sorted(
+            (s for s in pool if s["ticker"] not in chosen_ids),
+            key=score_mover,
+            reverse=True,
+        )
+        scan = list(chosen) + rest[:30]
+    else:
+        scan = chosen
 
     rows: List[Dict[str, Any]] = []
     with_news = 0
-    for snap in chosen:
+    up = down = 0
+    for snap in scan:
+        if require_news and len(rows) >= 6:
+            break
         news = {"why": None, "url": None, "is_earnings": False, "sentiment": None}
         if enrich_news:
             news = _normalize_enrichment(enrich(snap["ticker"]))
+        if require_news and not (news.get("why") or "").strip():
+            continue
+        if require_news:
+            pct = _change_pct(snap)
+            if pct >= 0:
+                if up >= 4:
+                    continue
+                up += 1
+            else:
+                if down >= 4:
+                    continue
+                down += 1
         if news["why"]:
             with_news += 1
         row = _to_brief_row(

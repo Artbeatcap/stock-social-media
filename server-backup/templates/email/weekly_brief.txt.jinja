@@ -1,0 +1,84 @@
+{{ brand.name }} — Weekly Brief
+{{ week_label }}
+================================================================================
+
+{% if data_stale %}
+NOTE: Some market data was unavailable at generation time.
+{% endif %}
+
+{% if tape -%}
+TAPE (weekly Mon→Fri)
+{% for t in tape -%}
+{{ t.symbol }}: {{ t.price }}{% if t.pct is not none %} ({{ '%+.2f'|format(t.pct) }}%){% endif %}
+
+{% endfor -%}
+{% endif %}
+
+{% if sections.major_driver -%}
+WHAT DROVE THE WEEK
+{{ sections.major_driver }}
+
+{% endif -%}
+{% if sections.week_in_review_html -%}
+LAST WEEK IN REVIEW
+{{ sections.week_in_review_html | striptags | trim }}
+
+{% endif -%}
+{% if sectors -%}
+SECTOR SCORECARD
+{% for s in sectors -%}
+{{ s.name }} ({{ s.etf }}): {{ '%+.2f'|format(s.pct) }}%
+{% endfor %}
+
+{% endif -%}
+{% if movers -%}
+NOTABLE MOVERS
+{% for m in movers -%}
+${{ m.ticker }}{% if m.companyName %} ({{ m.companyName }}){% endif %} {{ m.pct }}{% if m.why %} — {{ m.why }}{% endif %}
+
+{% endfor %}
+
+{% endif -%}
+{% if levels -%}
+LEVELS FOR THE WEEK
+{% for sym, d in levels.items() -%}
+{{ sym|upper }}{% if d.pivot %} pivot {{ d.pivot }}{% endif %}
+  Support: {{ d.support }}{% if d.support2 %} / {{ d.support2 }}{% endif %}
+  Resistance: {{ d.resistance }}{% if d.resistance2 %} / {{ d.resistance2 }}{% endif %}
+
+{% endfor -%}
+{% if sections.key_level_note -%}
+The line that matters: {{ sections.key_level_note }}
+
+{% endif -%}
+{% endif -%}
+{% if sections.week_ahead_html or week_ahead_bullets or earnings_bullets -%}
+THE WEEK AHEAD
+{% if sections.week_ahead_html -%}
+{{ sections.week_ahead_html | striptags | trim }}
+
+{% endif -%}
+{% for b in week_ahead_bullets -%}
+{{ b.date }} — {{ b.event }}{% if b.why %} — {{ b.why }}{% endif %}
+
+{% endfor %}
+{% if earnings_bullets -%}
+EARNINGS ON DECK
+{% for e in earnings_bullets -%}
+{{ e.date }} — {{ e.event }}{% if e.why %} — {{ e.why }}{% endif %}
+
+{% endfor %}
+{% endif -%}
+
+{% endif -%}
+{% if sections.biggest_risk -%}
+THE BIGGEST RISK
+{{ sections.biggest_risk }}
+
+{% endif -%}
+---
+Educational market commentary, not financial advice.
+Generated {{ generated_at }}.
+
+Email preferences: {{ preferences_url }}
+Unsubscribe: {{ unsubscribe_url }}

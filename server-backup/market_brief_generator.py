@@ -10,6 +10,7 @@ from market_brief_generator_fixed import (
 )
 
 import os
+import re
 import requests
 import json
 import hashlib
@@ -83,6 +84,103 @@ def _fh_api_key() -> str | None:
     """Get Finnhub API key from config or environment."""
     return (current_app.config.get('FINNHUB_TOKEN') if current_app else None) or os.getenv('FINNHUB_TOKEN')
 
+# Names that actually move the US tape. Broader than the old CPI/payroll list so
+# housing, sentiment, and PCE survive, without letting every low-impact print in.
+_MAJOR_EVENT_TERMS = (
+    "cpi", "ppi", "pce",
+    "payroll", "nonfarm", "non-farm", "unemployment rate",
+    "jobless", "claims", "jolts",
+    "fomc", "beige book", "interest rate decision",
+    "retail sales", "gdp",
+    "ism", "pmi",
+    "consumer sentiment", "consumer confidence", "michigan",
+    "inflation expectation",
+    "pending home", "existing home", "new home sales",
+    "housing starts", "building permits",
+    "durable goods",
+    "personal income", "personal spending",
+)
+
+_WHY_RULES = (
+    (("cpi", "ppi", "pce", "inflation"), "Inflation"),
+    (("payroll", "nonfarm", "non-farm", "unemployment", "jobless", "claims", "jolts"), "Labor market"),
+    (("fomc", "beige book", "interest rate"), "Fed policy"),
+    (("sentiment", "confidence", "michigan"), "Consumer mood"),
+    (("home", "housing", "building permit"), "Housing"),
+    (("retail sales", "gdp", "durable", "pmi", "ism", "personal income", "personal spending"), "Growth"),
+)
+
+_IMPACT_RANK = {"high": 0, "medium": 1, "low": 2}
+
+
+def _calendar_event_date(ev: Dict[str, Any], fallback: str) -> str:
+    """Finnhub often puts the calendar day in `time` (`YYYY-MM-DD HH:MM:SS`), not `date`."""
+    for raw in (ev.get("date"), ev.get("time")):
+        match = re.match(r"(\d{4}-\d{2}-\d{2})", str(raw or "").strip())
+        if match:
+            return match.group(1)
+    return fallback
+
+
+def _calendar_clock(ev: Dict[str, Any]) -> str:
+    raw = str(ev.get("time") or ev.get("time_utc") or "").strip()
+    match = re.match(r"\d{4}-\d{2}-\d{2}[ T](\d{2}:\d{2})", raw)
+    if match:
+        return match.group(1)
+    if re.match(r"\d{2}:\d{2}", raw):
+        return raw[:5]
+    return ""
+
+
+def _event_why(name: str) -> str:
+    lowered = name.lower()
+    for keys, label in _WHY_RULES:
+        if any(key in lowered for key in keys):
+            return label
+    return ""
+
+
+def _is_us_calendar_event(ev: Dict[str, Any]) -> bool:
+    country = str(ev.get("country") or ev.get("countryCode") or "").strip().upper()
+    if not country:
+        return True
+    return country in {"US", "USA", "UNITED STATES"}
+
+
+def _select_major_us_events(data: List[Dict[str, Any]], fallback_date: str) -> List[Dict[str, str]]:
+    """US prints that can move the tape, chronological, high-impact first within a day."""
+    out: List[Dict[str, str]] = []
+    seen = set()
+    for ev in data or []:
+        name = str(ev.get("event") or "").strip()
+        if not name or not _is_us_calendar_event(ev):
+            continue
+        lowered = name.lower()
+        if not any(term in lowered for term in _MAJOR_EVENT_TERMS):
+            continue
+        impact = str(ev.get("impact") or "").strip().lower()
+        if impact == "low":
+            continue
+        day = _calendar_event_date(ev, fallback_date)
+        key = (day, lowered)
+        if key in seen:
+            continue
+        seen.add(key)
+        estimate = ev.get("estimate")
+        previous = ev.get("previous") if ev.get("previous") not in (None, "") else ev.get("prev")
+        out.append({
+            "date": day,
+            "time_et": _calendar_clock(ev),
+            "event": name,
+            "estimate": "" if estimate is None else str(estimate),
+            "previous": "" if previous is None else str(previous),
+            "impact": impact,
+            "why": _event_why(name),
+        })
+    out.sort(key=lambda row: (row["date"], _IMPACT_RANK.get(row["impact"], 1), row["event"]))
+    return out
+
+
 def fetch_economic_calendar_today() -> List[Dict[str, str]]:
     """Fetch today's economic calendar events from Finnhub with caching."""
     token = _fh_api_key()
@@ -100,26 +198,7 @@ def fetch_economic_calendar_today() -> List[Dict[str, str]]:
                 data = (raw or {}).get("economicCalendar", [])
                 if raw:
                     _cache_put_json(cache_key, raw)
-            key_terms = ("cpi","ppi","payroll","employment","claims","pmi","ism","gdp","confidence","inventories","fomc","minutes","retail sales")
-            out: List[Dict[str, str]] = []
-            for ev in data:
-                name = (ev.get("event") or "").strip()
-                if not name:
-                    continue
-                if any(k in name.lower() for k in key_terms):
-                    why = (
-                        "Rates trajectory"
-                        if any(x in name.lower() for x in ("cpi","inflation","ppi","gdp","payroll","employment","claims","fed","fomc"))
-                        else "Growth/sentiment signal"
-                    )
-                    out.append({
-                        "time_et": ev.get("time") or ev.get("time_utc") or "",
-                        "event": name,
-                        "estimate": ev.get("estimate") or ev.get("actual") or "",
-                        "previous": ev.get("previous") or "",
-                        "impact": ev.get("impact") or "",
-                        "why": why,
-                    })
+            out = _select_major_us_events(data, today)
             if out:
                 return out
         except Exception:
@@ -154,28 +233,7 @@ def fetch_economic_calendar_range(days_ahead: int = 7, start: datetime | None = 
                 if raw:
                     _cache_put_json(cache_key, raw)
             data = (raw or {}).get("economicCalendar", [])
-            key_terms = ("cpi","ppi","payroll","employment","claims","pmi","ism","gdp","confidence","inventories","fomc","minutes","retail sales")
-            out: List[Dict[str, str]] = []
-            for ev in data:
-                name = (ev.get("event") or "").strip()
-                if not name:
-                    continue
-                if any(k in name.lower() for k in key_terms):
-                    why = (
-                        "Rates trajectory"
-                        if any(x in name.lower() for x in ("cpi","inflation","ppi","gdp","payroll","employment","claims","fed","fomc"))
-                        else "Growth/sentiment signal"
-                    )
-                    out.append({
-                        "date": (ev.get("date") or start_dt.isoformat()),
-                        "time_et": ev.get("time") or ev.get("time_utc") or "",
-                        "event": name,
-                        "estimate": ev.get("estimate") or "",
-                        "previous": ev.get("previous") or "",
-                        "impact": ev.get("impact") or "",
-                        "why": why,
-                    })
-            return out
+            return _select_major_us_events(data, start_dt.isoformat())
         except Exception:
             pass
     # FALLBACK: AV inference (no dates/times/estimates guaranteed)
@@ -183,6 +241,51 @@ def fetch_economic_calendar_range(days_ahead: int = 7, start: datetime | None = 
     # Transform to week-ahead "best we can" list with today's date
     d = datetime.now(tz=NY).date().isoformat()
     return [{"date": d, "time_et": c.get("time_et","—"), "event": c.get("event",""), "why": c.get("why","")} for c in cats]
+
+
+def fetch_earnings_calendar_range(days_ahead: int = 5, start: datetime | None = None) -> List[Dict[str, Any]]:
+    """Finnhub earnings calendar for [start, start+days_ahead), inclusive of the end date.
+
+    Returns normalized rows. Ranking and the email copy live in the weekly brief.
+    """
+    token = _fh_api_key()
+    if not token:
+        return []
+    start_dt = (start or datetime.now(tz=NY)).date()
+    end_dt = start_dt + timedelta(days=max(days_ahead - 1, 0))
+    try:
+        url = "https://finnhub.io/api/v1/calendar/earnings"
+        cache_key = f"fh:earn:{start_dt.isoformat()}:{end_dt.isoformat()}"
+        cached = _cache_get_json(cache_key, FH_CACHE_TTL)
+        if cached is not None:
+            raw = cached
+        else:
+            r = requests.get(
+                url,
+                params={"from": start_dt.isoformat(), "to": end_dt.isoformat(), "token": token},
+                timeout=12,
+            )
+            raw = r.json() if r.status_code == 200 else {}
+            if raw:
+                _cache_put_json(cache_key, raw)
+        data = (raw or {}).get("earningsCalendar") or []
+        out: List[Dict[str, Any]] = []
+        for ev in data:
+            symbol = str(ev.get("symbol") or "").upper().strip()
+            day = str(ev.get("date") or "").strip()[:10]
+            if not symbol or not day:
+                continue
+            out.append({
+                "date": day,
+                "symbol": symbol,
+                "hour": str(ev.get("hour") or "").strip().lower(),
+                "revenue_estimate": ev.get("revenueEstimate"),
+                "eps_estimate": ev.get("epsEstimate"),
+            })
+        return out
+    except Exception:
+        return []
+
 
 def _week_bounds(dt: datetime | None = None) -> tuple[datetime, datetime]:
     """Return (Mon, Fri) datetimes for the week containing dt (ET)."""

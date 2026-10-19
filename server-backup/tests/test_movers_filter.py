@@ -214,6 +214,30 @@ class RankingTests(unittest.TestCase):
         self.assertEqual(set(tickers), {"NVDA", "AAPL"})
         self.assertTrue(all(r["why"] == FLOW_DRIVEN_WHY for r in rows))
 
+    def test_require_news_skips_a_move_with_no_headline(self):
+        snaps = [
+            liquid_snap("NVDA", 9.0, price=120.0, volume=20_000_000),
+            liquid_snap("AAPL", 5.0, price=180.0, volume=15_000_000),
+        ]
+
+        def fetch_meta(tickers):
+            return {t: ALL_META[t] for t in tickers if t in ALL_META}
+
+        def enrich(ticker):
+            if ticker == "AAPL":
+                return ("iPhone demand lifts the quarter", "https://example.com/aapl")
+            return (None, None)
+
+        rows = select_notable_movers(
+            snaps,
+            fetch_meta=fetch_meta,
+            split_check=lambda *_: False,
+            enrich=enrich,
+            require_news=True,
+        )
+        self.assertEqual([r["ticker"] for r in rows], ["AAPL"])
+        self.assertEqual(rows[0]["why"], "iPhone demand lifts the quarter")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -73,9 +73,12 @@ def sample_context():
             }
         },
         "week_ahead_bullets": [
-            {"date": "Mon", "event": "PMI", "why": "Manufacturing pulse"},
+            {"date": "Tue", "event": "September Pending Home Sales", "why": "Housing"},
+            {"date": "Thu", "event": "Initial Jobless Claims", "why": "Labor market"},
         ],
-        "earnings_bullets": [],
+        "earnings_bullets": [
+            {"date": "Tue", "event": "NFLX, IBM", "why": "After the close"},
+        ],
         "data_stale": False,
         "unsubscribe_url": "https://optionsplunge.com/unsubscribe",
         "preferences_url": "https://optionsplunge.com/settings",
@@ -125,6 +128,52 @@ class TestWeeklyBriefHelpers:
         )
         assert "A/D: 1867 advancers / 923 decliners" in feed
         assert "50DMA" in feed
+
+    def test_major_us_events_keep_housing_sentiment_and_claims(self):
+        from market_brief_generator import _select_major_us_events
+
+        raw = [
+            {"country": "US", "event": "September Pending Home Sales", "impact": "medium", "time": "2026-10-20 14:00:00"},
+            {"country": "US", "event": "Initial Jobless Claims", "impact": "high", "time": "2026-10-22 12:30:00"},
+            {"country": "US", "event": "Michigan Consumer Sentiment", "impact": "medium", "time": "2026-10-23 14:00:00"},
+            {"country": "DE", "event": "CPI", "impact": "high", "time": "2026-10-21 06:00:00"},
+            {"country": "US", "event": "API Crude Oil Stock Change", "impact": "low", "time": "2026-10-21 20:30:00"},
+        ]
+        names = [row["event"] for row in _select_major_us_events(raw, "2026-10-19")]
+        assert names == [
+            "September Pending Home Sales",
+            "Initial Jobless Claims",
+            "Michigan Consumer Sentiment",
+        ]
+        dated = _select_major_us_events(raw, "2026-10-19")
+        assert dated[0]["date"] == "2026-10-20"
+        assert dated[0]["why"] == "Housing"
+        assert dated[1]["why"] == "Labor market"
+
+    def test_trim_keeps_high_impact_when_the_week_is_crowded(self):
+        from weekly_brief_v2 import _trim_week_events
+
+        events = [
+            {"date": "2026-10-19", "event": f"Print {i}", "impact": "medium"}
+            for i in range(8)
+        ]
+        events[6] = {"date": "2026-10-23", "event": "CPI", "impact": "high"}
+        kept = _trim_week_events(events, limit=6)
+        assert len(kept) == 6
+        assert any(row["event"] == "CPI" for row in kept)
+
+    def test_earnings_groups_anticipated_names_by_session(self):
+        from weekly_brief_v2 import _earnings_bullets_from_rows
+
+        rows = [
+            {"date": "2026-10-20", "symbol": "NFLX", "hour": "amc", "revenue_estimate": 11_000_000_000, "eps_estimate": 5},
+            {"date": "2026-10-20", "symbol": "IBM", "hour": "amc", "revenue_estimate": 16_000_000_000, "eps_estimate": 2},
+            {"date": "2026-10-20", "symbol": "TINY", "hour": "amc", "revenue_estimate": None, "eps_estimate": None},
+            {"date": "2026-10-22", "symbol": "AAPL", "hour": "bmo", "revenue_estimate": 90_000_000_000, "eps_estimate": 1.5},
+        ]
+        bullets = _earnings_bullets_from_rows(rows)
+        assert bullets[0] == {"date": "Tue", "event": "IBM, NFLX", "why": "After the close"}
+        assert bullets[1] == {"date": "Thu", "event": "AAPL", "why": "Before the open"}
 
 
 class TestBuildWeeklyBrief:
@@ -218,6 +267,7 @@ class TestBuildWeeklyBrief:
             }
         ]
         select.assert_called_once()
+        assert select.call_args.kwargs.get("require_news") is True
 
     def test_av_fallback_drops_leveraged_and_unvetted_names(self):
         from ticker_meta import TickerMeta
@@ -231,7 +281,8 @@ class TestBuildWeeklyBrief:
             {"ticker": "STXU", "pct": "-20.78%", "dir": "down", "why": ""},
             {"ticker": "STXL", "pct": "-20.69%", "dir": "down", "why": ""},
             {"ticker": "WDCX", "pct": "-20.15%", "dir": "down", "why": ""},
-            {"ticker": "NVDA", "pct": "+4.50%", "dir": "up", "why": ""},
+            {"ticker": "NVDA", "pct": "+4.50%", "dir": "up", "why": "AI demand"},
+            {"ticker": "AAPL", "pct": "+3.20%", "dir": "up", "why": ""},
             {"ticker": "QBTX", "pct": "-16.00%", "dir": "down", "why": ""},
         ]
         with patch(
@@ -242,6 +293,7 @@ class TestBuildWeeklyBrief:
                 "STXL": meta("STXL", "Defiance Daily Target 2X Long STX ETF", "ETF"),
                 "WDCX": meta("WDCX", "Tradr 2X Long WDC Daily ETF", "ETF"),
                 "NVDA": meta("NVDA", "NVIDIA Corporation"),
+                "AAPL": meta("AAPL", "Apple Inc."),
             },
         ):
             kept = _filter_av_movers(rows)
@@ -317,6 +369,12 @@ class TestTemplateRender:
         assert "NVIDIA Corporation" in text
         assert "Weekly Brief" in text
         assert "SECTOR SCORECARD" in text
+        assert "Earnings on deck" in html
+        assert "NFLX, IBM" in html
+        assert "Pending Home Sales" in html
+        assert "#f4efe6" in html
+        assert "#0b0f17" not in html
+        assert "EARNINGS ON DECK" in text
 
 
 class TestSendWeeklyBriefAdmin:

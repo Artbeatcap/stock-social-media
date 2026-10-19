@@ -23,6 +23,7 @@ from market_brief_generator import (
     calculate_expected_range,
     fetch_top_movers_av,
     fetch_economic_calendar_range,
+    fetch_earnings_calendar_range,
     _tradier_history_daily,
     _pivot_levels_from_hlc,
     _last_completed_week_range,
@@ -47,6 +48,39 @@ JUNK_MAX_PRICE = float(os.getenv("JUNK_MAX_PRICE", "2000"))
 JUNK_MIN_ABS_PCT = float(os.getenv("JUNK_MIN_ABS_PCT", "3"))
 JUNK_MAX_ABS_PCT = float(os.getenv("JUNK_MAX_ABS_PCT", "35"))
 JUNK_MIN_VOL = float(os.getenv("JUNK_MIN_PM_VOL", "750000"))
+
+_NO_CATALYST_WHYS = {
+    "no headline — flow-driven",
+    "no headline - flow-driven",
+    "no catalyst in the last 36 hours",
+}
+
+# Large, liquid reporters. Used only as a tie-break so a quiet mega-cap
+# outranks a no-estimate micro-cap when Finnhub omits revenue.
+_EARNINGS_FOCUS = {
+    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "GOOG", "META", "TSLA", "AVGO",
+    "JPM", "V", "UNH", "XOM", "LLY", "MA", "JNJ", "COST", "HD", "PG", "NFLX",
+    "AMD", "CRM", "BAC", "WMT", "ORCL", "KO", "PEP", "CVX", "MRK", "ABBV",
+    "MCD", "CSCO", "IBM", "GE", "CAT", "BA", "DIS", "INTC", "QCOM", "TXN",
+    "AMAT", "NOW", "UBER", "SHOP", "SNOW", "PLTR", "COIN", "ARM",
+}
+_EARNINGS_FOCUS_BOOST = 50_000_000_000
+_SESSION_LABEL = {
+    "bmo": "Before the open",
+    "amc": "After the close",
+    "dmh": "During the session",
+}
+_WEEK_AHEAD_LIMIT = 6
+
+
+def _has_news_catalyst(row: Dict[str, Any]) -> bool:
+    """A mover with no headline is noise in the email. Drop it."""
+    why = str(row.get("why") or "").strip()
+    if not why or why.lower() in _NO_CATALYST_WHYS:
+        return False
+    if row.get("hasCatalyst") is False:
+        return False
+    return True
 
 SECTOR_ETFS: List[Tuple[str, str]] = [
     ("XLK", "Technology"), ("XLF", "Financials"), ("XLV", "Health Care"),
@@ -219,11 +253,14 @@ def _friday_session_movers(fri) -> List[Dict[str, Any]]:
     if not today_map or not yest_map:
         return []
     try:
-        rows = select_notable_movers(session_snapshots(today_map, yest_map))
+        rows = select_notable_movers(
+            session_snapshots(today_map, yest_map),
+            require_news=True,
+        )
     except Exception as e:
         logger.warning("weekly notable movers filter failed: %s", e)
         return []
-    return [_public_mover_row(r) for r in rows]
+    return [_public_mover_row(r) for r in rows if _has_news_catalyst(r)]
 
 
 def _filter_av_movers(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -248,6 +285,8 @@ def _filter_av_movers(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             continue
         if info.name and not row.get("companyName"):
             row = {**row, "companyName": info.name}
+        if not _has_news_catalyst(row):
+            continue
         kept.append(row)
     return kept
 
@@ -291,23 +330,117 @@ def _fetch_friday_internals(fri) -> Optional[Dict[str, Any]]:
         return None
 
 
+def _trim_week_events(events: List[Dict[str, str]], limit: int = _WEEK_AHEAD_LIMIT) -> List[Dict[str, str]]:
+    """Keep the week scannable. High-impact prints win a slot when the list is long."""
+    ordered = sorted(events, key=lambda e: (e.get("date") or "", e.get("event") or ""))
+    if len(ordered) <= limit:
+        return ordered
+    highs = [e for e in ordered if str(e.get("impact") or "").lower() == "high"]
+    if len(highs) >= limit:
+        return highs[:limit]
+    chosen = list(highs)
+    seen = {(e.get("date"), e.get("event")) for e in chosen}
+    for event in ordered:
+        if len(chosen) >= limit:
+            break
+        key = (event.get("date"), event.get("event"))
+        if key in seen:
+            continue
+        chosen.append(event)
+        seen.add(key)
+    chosen.sort(key=lambda e: (e.get("date") or "", e.get("event") or ""))
+    return chosen
+
+
+def _weekday_badge(date_str: str) -> str:
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%a")
+    except Exception:
+        return date_str or "—"
+
+
 def _week_ahead_bullets(start_mon) -> List[Dict[str, str]]:
     start_dt = datetime.combine(start_mon, datetime.min.time(), tzinfo=NY)
-    cats = fetch_economic_calendar_range(days_ahead=7, start=start_dt) or []
+    # Monday through Friday. days_ahead=5 with an inclusive end lands on Friday.
+    cats = fetch_economic_calendar_range(days_ahead=5, start=start_dt) or []
     out: List[Dict[str, str]] = []
-    for c in cats[:8]:
-        date_str = (c.get("date") or "").strip()
-        badge = date_str
-        try:
-            badge = datetime.strptime(date_str, "%Y-%m-%d").strftime("%a")
-        except Exception:
-            pass
+    for c in _trim_week_events(cats):
+        event = (c.get("event") or "").strip()
+        if not event:
+            continue
         out.append({
-            "date": badge or "—",
-            "event": (c.get("event") or "").strip(),
-            "why": (c.get("why") or c.get("impact") or "").strip(),
+            "date": _weekday_badge((c.get("date") or "").strip()),
+            "event": event,
+            "why": (c.get("why") or "").strip(),
         })
-    return [b for b in out if b["event"]]
+    return out
+
+
+def _earnings_score(row: Dict[str, Any]) -> float:
+    revenue = _parse_num(row.get("revenue_estimate")) or 0.0
+    score = revenue
+    symbol = str(row.get("symbol") or "").upper()
+    if symbol in _EARNINGS_FOCUS:
+        score += _EARNINGS_FOCUS_BOOST
+    if _parse_num(row.get("eps_estimate")) is not None:
+        score += 1.0
+    return score
+
+
+def _earnings_bullets_from_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    """Most anticipated reporters, grouped by day and session. At most four names a line."""
+    ranked = sorted(
+        (r for r in rows if re.fullmatch(r"[A-Z]{1,5}", str(r.get("symbol") or ""))),
+        key=_earnings_score,
+        reverse=True,
+    )
+    groups: Dict[Tuple[str, str], List[str]] = {}
+    order: List[Tuple[str, str]] = []
+    kept = 0
+    for row in ranked:
+        if _earnings_score(row) <= 0:
+            continue
+        key = (str(row.get("date") or ""), str(row.get("hour") or ""))
+        bucket = groups.setdefault(key, [])
+        if key not in order:
+            order.append(key)
+        if len(bucket) >= 4:
+            continue
+        bucket.append(str(row["symbol"]))
+        kept += 1
+        if kept >= 12:
+            break
+    bullets: List[Dict[str, str]] = []
+    for day, hour in sorted(order, key=lambda k: (k[0], {"bmo": 0, "dmh": 1, "amc": 2}.get(k[1], 3))):
+        names = groups.get((day, hour)) or []
+        if not names:
+            continue
+        bullets.append({
+            "date": _weekday_badge(day),
+            "event": ", ".join(names),
+            "why": _SESSION_LABEL.get(hour, ""),
+        })
+    return bullets
+
+
+def _earnings_symbols(bullets: List[Dict[str, str]]) -> set:
+    symbols = set()
+    for bullet in bullets:
+        for part in (bullet.get("event") or "").split(","):
+            symbol = part.strip().upper()
+            if symbol:
+                symbols.add(symbol)
+    return symbols
+
+
+def _earnings_bullets(start_mon) -> List[Dict[str, str]]:
+    start_dt = datetime.combine(start_mon, datetime.min.time(), tzinfo=NY)
+    try:
+        rows = fetch_earnings_calendar_range(days_ahead=5, start=start_dt) or []
+    except Exception as e:
+        logger.warning("earnings calendar failed: %s", e)
+        return []
+    return _earnings_bullets_from_rows(rows)
 
 
 def _internals_feed_lines(internals: Optional[Dict[str, Any]]) -> List[str]:
@@ -349,6 +482,7 @@ def _build_feed(
     levels: Dict[str, Any],
     week_ahead: List[Dict[str, str]],
     internals: Optional[Dict[str, Any]] = None,
+    earnings: Optional[List[Dict[str, str]]] = None,
 ) -> str:
     def fmt_tape(t: Dict[str, Any]) -> str:
         p = f"{t['pct']:+.2f}%" if t.get("pct") is not None else "n/a"
@@ -370,6 +504,10 @@ def _build_feed(
         f"  {b['date']} {b['event']}" + (f" — {b['why']}" if b.get("why") else "")
         for b in week_ahead
     ] or ["  (no catalysts on calendar)"]
+    earn_lines = [
+        f"  {b['date']} {b['event']}" + (f" — {b['why']}" if b.get("why") else "")
+        for b in (earnings or [])
+    ] or ["  (no major earnings on the calendar)"]
 
     return (
         f"WEEK: {week_label}\n\n"
@@ -390,6 +528,9 @@ def _build_feed(
         + "\n\n"
         f"WEEK-AHEAD CATALYSTS:\n"
         + "\n".join(wa_lines)
+        + "\n\n"
+        f"EARNINGS ON DECK:\n"
+        + "\n".join(earn_lines)
         + "\n"
     )
 
@@ -561,10 +702,15 @@ def build_weekly_brief() -> Dict[str, Any]:
                 }
         data_stale = True
 
-    week_ahead = _week_ahead_bullets(next_mon)
+    movers = [m for m in movers if _has_news_catalyst(m)]
 
-    feed = _build_feed(week_label, tape, sectors, movers, levels, week_ahead, internals)
-    allowed = _allowed_tickers(tape, sectors, movers)
+    week_ahead = _week_ahead_bullets(next_mon)
+    earnings = _earnings_bullets(next_mon)
+
+    feed = _build_feed(
+        week_label, tape, sectors, movers, levels, week_ahead, internals, earnings
+    )
+    allowed = _allowed_tickers(tape, sectors, movers) | _earnings_symbols(earnings)
     md = _synthesize(feed, allowed)
     secs = _split_sections(md)
     for key, val in list(secs.items()):
@@ -595,7 +741,7 @@ def build_weekly_brief() -> Dict[str, Any]:
         "movers": movers,
         "levels": levels,
         "week_ahead_bullets": week_ahead,
-        "earnings_bullets": [],
+        "earnings_bullets": earnings,
         "data_stale": data_stale,
         "unsubscribe_url": "https://optionsplunge.com/market_brief",
         "preferences_url": "https://optionsplunge.com/settings",
