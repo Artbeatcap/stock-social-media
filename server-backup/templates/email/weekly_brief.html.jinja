@@ -146,6 +146,7 @@
                 <td style="padding:13px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
                   <span style="font-size:15px;font-weight:800;color:#0b1220;">${{ m.ticker }}</span>
                   <span style="font-size:14px;font-weight:700;margin-left:8px;color:{% if m.dir == 'down' %}#e2426a{% else %}#16a866{% endif %};">{{ m.pct }}</span>
+                  {% if m.windowLabel %}<span style="display:inline-block;font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:#F5F5F4;color:#78716C;margin-left:8px;">{{ m.windowLabel }}</span>{% endif %}
                   {% if m.companyName %}<span style="font-size:13px;color:#78716C;margin-left:8px;">{{ m.companyName }}</span>{% endif %}
                   {% if m.why %}<div style="font-size:14px;line-height:1.5;color:#4a586b;margin-top:5px;">{{ m.why }}</div>{% endif %}
                 </td>

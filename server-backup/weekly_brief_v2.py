@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import re
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from market_brief_generator import (
@@ -102,6 +102,8 @@ NON-NEGOTIABLE RULES
 - No financial advice. Analysis, context, and level-based scenarios only — never "buy/sell".
 - US Eastern Time, US market focus. Round sensibly.
 - If a data point is missing, write around it; do not guess or fill it.
+- A "%" in the feed is a percent. Never call a percent move "points." Point moves are labeled "points" in the feed.
+- Breadth must match the advancer and decliner counts. If decliners outnumber advancers, do not say most stocks held up, or that the market was broad to the upside.
 
 VOICE
 - Short sentences. Active voice. Confident, not breathless.
@@ -123,11 +125,17 @@ Use a level from the feed (pivots or index spot). Name the instrument.
 
 ## WEEK AHEAD
 1-2 short paragraphs: how next week could unfold given the macro catalysts in the feed and the technical setup.
-Do NOT list the calendar — that's rendered separately. Synthesize the implication.
+Name at most TWO calendar catalysts. Do NOT restate the calendar list — that is rendered separately.
 
 ## BIGGEST RISK
 One paragraph (2-3 sentences): the cleanest bear/bull risk into next week, grounded in feed data
 (rates, vol, positioning, the driver).
+
+## MOVER WHY
+One line per notable mover, exactly `$TICKER: one factual sentence`.
+Use only that mover's headlines. No "prediction", "is it a buy", or "here's why I'm".
+Do not quote a percent from a headline unless it matches that mover's percent in the feed.
+If the headlines do not state a fact about that company, write `$TICKER: DROP`.
 """
 
 
@@ -153,6 +161,47 @@ def _weekly_index_change(symbol: str, mon, fri) -> Optional[float]:
         last_close = float(hist[-1]["close"])
         return _pct(last_close, first_open)
     except Exception:
+        return None
+
+
+def _vix_change_from_yahoo(mon, fri) -> Optional[float]:
+    """Mon-open to Fri-close for ^VIX. The index history feed is not on the current plan."""
+    try:
+        import requests
+
+        start = datetime(mon.year, mon.month, mon.day, tzinfo=timezone.utc) - timedelta(days=1)
+        end = datetime(fri.year, fri.month, fri.day, tzinfo=timezone.utc) + timedelta(days=2)
+        response = requests.get(
+            "https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX",
+            params={
+                "interval": "1d",
+                "period1": int(start.timestamp()),
+                "period2": int(end.timestamp()),
+            },
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=12,
+        )
+        if response.status_code != 200:
+            return None
+        result = ((response.json() or {}).get("chart") or {}).get("result") or []
+        if not result:
+            return None
+        quote = ((result[0].get("indicators") or {}).get("quote") or [{}])[0]
+        bars = []
+        for ts, open_px, close_px in zip(
+            result[0].get("timestamp") or [],
+            quote.get("open") or [],
+            quote.get("close") or [],
+        ):
+            day = datetime.fromtimestamp(ts, timezone.utc).date()
+            if mon <= day <= fri and open_px and close_px:
+                bars.append((day, float(open_px), float(close_px)))
+        if not bars:
+            return None
+        bars.sort()
+        return _pct(bars[-1][2], bars[0][1])
+    except Exception as exc:
+        logger.warning("VIX history fallback failed: %s", exc)
         return None
 
 
@@ -215,6 +264,7 @@ def _public_mover_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "companyName",
         "reasonUrl",
         "window",
+        "windowLabel",
         "isEarnings",
         "priorSessionPct",
         "hasCatalyst",
@@ -226,6 +276,9 @@ def _public_mover_row(row: Dict[str, Any]) -> Dict[str, Any]:
             continue
         out[key] = val
     out["why"] = row.get("why") or ""
+    headlines = row.get("_headlines") or []
+    if headlines:
+        out["_headlines"] = list(headlines)
     return out
 
 
@@ -261,6 +314,70 @@ def _friday_session_movers(fri) -> List[Dict[str, Any]]:
         logger.warning("weekly notable movers filter failed: %s", e)
         return []
     return [_public_mover_row(r) for r in rows if _has_news_catalyst(r)]
+
+
+def _weekly_change_snaps(mon, fri) -> List[Dict[str, Any]]:
+    """Mon-open to Fri-close percent, with Friday volume as the liquidity proxy."""
+    if not (os.getenv("MASSIVE_API_KEY") or os.getenv("POLYGON_API_KEY")):
+        return []
+    from market_internals import _fetch_grouped_daily_rows
+
+    mon_rows = _fetch_grouped_daily_rows(mon.strftime("%Y-%m-%d"))
+    fri_rows = _fetch_grouped_daily_rows(fri.strftime("%Y-%m-%d"))
+    mon_map = {row["T"]: row for row in mon_rows if row.get("T")}
+    snaps: List[Dict[str, Any]] = []
+    for row in fri_rows:
+        ticker = row.get("T")
+        start = mon_map.get(ticker)
+        if not ticker or not start:
+            continue
+        try:
+            open_px = float(start["o"])
+            close_px = float(row["c"])
+            volume = float(row.get("v") or 0)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if open_px <= 0 or close_px <= 0:
+            continue
+        pct = (close_px - open_px) / open_px * 100.0
+        snaps.append({
+            "ticker": ticker,
+            "todaysChangePerc": pct,
+            "day": {"c": close_px, "v": volume},
+            "prevDay": {"v": volume},
+            "lastTrade": {"p": close_px},
+        })
+    return snaps
+
+
+def _weekly_movers(mon, fri) -> List[Dict[str, Any]]:
+    """Rank the week Mon-open to Fri-close. A single-day fallback wears the weekday."""
+    rows: List[Dict[str, Any]] = []
+    try:
+        from movers_filter import select_notable_movers
+
+        snaps = _weekly_change_snaps(mon, fri)
+        if snaps:
+            rows = select_notable_movers(
+                snaps,
+                require_news=True,
+                window="week",
+                window_label="Week",
+                news_since=datetime(mon.year, mon.month, mon.day, tzinfo=timezone.utc),
+                news_until=datetime(fri.year, fri.month, fri.day, 23, 59, tzinfo=timezone.utc),
+            )
+    except Exception as e:
+        logger.warning("weekly change movers failed: %s", e)
+        rows = []
+    if rows:
+        return [_public_mover_row(r) for r in rows if _has_news_catalyst(r)]
+
+    fallback = _friday_session_movers(fri)
+    weekday = fri.strftime("%a") if hasattr(fri, "strftime") else "Fri"
+    for row in fallback:
+        row["window"] = "session"
+        row["windowLabel"] = weekday
+    return fallback
 
 
 def _filter_av_movers(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -408,7 +525,7 @@ def _earnings_bullets_from_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, st
         bullets.append({
             "date": _weekday_badge(day),
             "event": ", ".join(names),
-            "why": _SESSION_LABEL.get(hour, ""),
+            "why": _SESSION_LABEL.get(hour) or "Time TBA",
         })
     return bullets
 
@@ -475,14 +592,26 @@ def _build_feed(
     earnings: Optional[List[Dict[str, str]]] = None,
 ) -> str:
     def fmt_tape(t: Dict[str, Any]) -> str:
-        p = f"{t['pct']:+.2f}%" if t.get("pct") is not None else "n/a"
-        return f"  {t['symbol']}: {t['price']} ({p} on the week)"
+        if t.get("pct") is None:
+            return f"  {t['symbol']}: {t['price']} (weekly change unavailable)"
+        pct = float(t["pct"])
+        price = _parse_num(t.get("price"))
+        points = ""
+        if price:
+            points = f", {price * pct / 100:+.1f} points"
+        return f"  {t['symbol']}: {t['price']} ({pct:+.2f}% on the week{points})"
 
     sec_lines = [f"  {s['name']} ({s['etf']}): {s['pct']:+.2f}%" for s in sectors] or ["  (no sector data)"]
-    mov_lines = [
-        f"  ${m['ticker']}: {m['pct']}" + (f" — {m['why']}" if m.get("why") else "")
-        for m in movers
-    ] or ["  (no qualifying movers)"]
+    mov_lines = []
+    for m in movers:
+        window = f" [{m['windowLabel']}]" if m.get("windowLabel") else ""
+        headlines = m.get("_headlines") or ([m["why"]] if m.get("why") else [])
+        line = f"  ${m['ticker']}: {m['pct']}{window}"
+        if headlines:
+            line += "\n    headlines: " + " | ".join(headlines)
+        mov_lines.append(line)
+    if not mov_lines:
+        mov_lines = ["  (no qualifying movers)"]
     lvl_lines = []
     for sym, d in levels.items():
         lvl_lines.append(
@@ -542,6 +671,174 @@ def _find_fabricated(text: str, allowed: set) -> List[str]:
     return sorted(t for t in cashtags if t not in allowed)
 
 
+_WORD_NUMBERS = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+    "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
+    "fifteen": 15, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50,
+    "hundred": 100,
+}
+_NUMBER_WORD = "|".join(_WORD_NUMBERS)
+_POINT_CLAIM = re.compile(
+    rf"\b(?P<num>{_NUMBER_WORD}|\d+(?:\.\d+)?)\b(?:\s+\w+){{0,5}}\s+points?\b",
+    re.I,
+)
+_PERCENT_CLAIM = re.compile(r"\b(?P<num>\d+(?:\.\d+)?)\s*(?:%|percent)\b", re.I)
+_DOLLAR_CLAIM = re.compile(r"\$(?P<num>\d+(?:,\d{3})*(?:\.\d+)?)")
+_BARE_NUMBER = re.compile(r"(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])")
+_BULL_BREADTH = re.compile(
+    r"most stocks[^.]{0,48}(held|hold up|higher|gained|advanced|rose)|"
+    r"broad(?:ly)?[^.]{0,40}(higher|upside|held up|advance)|"
+    r"majority of (?:stocks|names)[^.]{0,32}(rose|gained|held|advanced)",
+    re.I,
+)
+_BEAR_BREADTH = re.compile(
+    r"most stocks[^.]{0,48}(fell|lower|declin|sold off|dropped)|"
+    r"majority of (?:stocks|names)[^.]{0,32}(fell|declin|dropped)",
+    re.I,
+)
+
+
+def _claim_value(raw: str) -> Optional[float]:
+    key = (raw or "").strip().lower().replace(",", "")
+    if key in _WORD_NUMBERS:
+        return float(_WORD_NUMBERS[key])
+    return _parse_num(key)
+
+
+def _near(value: float, pool: List[float], tol: float) -> bool:
+    return any(abs(abs(value) - abs(item)) <= tol for item in pool)
+
+
+def _number_pools(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    percents: List[float] = []
+    prices: List[float] = []
+    points: List[float] = []
+    counts: List[float] = []
+    for row in ctx.get("tape") or []:
+        pct = row.get("pct")
+        price = _parse_num(row.get("price"))
+        if pct is not None:
+            percents.append(float(pct))
+        if price is not None:
+            prices.append(price)
+            if pct is not None:
+                points.append(abs(price * float(pct) / 100.0))
+    for row in ctx.get("sectors") or []:
+        if row.get("pct") is not None:
+            percents.append(float(row["pct"]))
+    for row in ctx.get("movers") or []:
+        pct = _parse_num(row.get("pct"))
+        if pct is not None:
+            percents.append(pct)
+    for levels in (ctx.get("levels") or {}).values():
+        for key in ("pivot", "support", "support2", "resistance", "resistance2"):
+            value = _parse_num((levels or {}).get(key))
+            if value is not None:
+                prices.append(value)
+    breadth = ((ctx.get("internals") or {}).get("breadth") or {})
+    adv = breadth.get("advancers")
+    dec = breadth.get("decliners")
+    if adv is not None:
+        counts.append(float(adv))
+    if dec is not None:
+        counts.append(float(dec))
+    return {
+        "percents": percents,
+        "prices": prices,
+        "points": points,
+        "counts": counts,
+        "advancers": None if adv is None else float(adv),
+        "decliners": None if dec is None else float(dec),
+    }
+
+
+def _narrative_without_mover_why(md: str) -> str:
+    return re.sub(r"^##\s+MOVER WHY\b[\s\S]*", "", md or "", flags=re.MULTILINE).strip()
+
+
+def _span_inside(spans: List[Tuple[int, int]], start: int, end: int) -> bool:
+    return any(start >= a and end <= b for a, b in spans)
+
+
+def check_weekly_prose(md: str, ctx: Dict[str, Any]) -> List[str]:
+    """Every claimed number has to come from the feed, in the right unit."""
+    text = _narrative_without_mover_why(md)
+    pools = _number_pools(ctx)
+    errors: List[str] = []
+    consumed: List[Tuple[int, int]] = []
+
+    for match in _PERCENT_CLAIM.finditer(text):
+        consumed.append(match.span())
+        value = _claim_value(match.group("num"))
+        if value is None or not _near(value, pools["percents"], 0.15):
+            errors.append(f"{match.group(0).strip()} does not match a percent in the feed")
+    for match in _DOLLAR_CLAIM.finditer(text):
+        consumed.append(match.span())
+        value = _claim_value(match.group("num"))
+        if value is None or not _near(value, pools["prices"], 0.5):
+            errors.append(f"{match.group(0).strip()} does not match a price in the feed")
+    for match in _POINT_CLAIM.finditer(text):
+        consumed.append(match.span())
+        value = _claim_value(match.group("num"))
+        if value is None or not _near(value, pools["points"], 1.0):
+            errors.append(
+                f"'{match.group(0).strip()}' does not match a point move in the feed"
+            )
+    allowed_bare = pools["percents"] + pools["prices"] + pools["points"] + pools["counts"]
+    for match in _BARE_NUMBER.finditer(text):
+        if _span_inside(consumed, match.start(), match.end()):
+            continue
+        if re.match(r"(?:%|percent|points?)", text[match.end():], re.I):
+            continue
+        raw = match.group(1)
+        if re.fullmatch(r"\d{4}", raw) and 1990 <= int(raw) <= 2039:
+            continue
+        if re.match(r"\s*-?\s*(day|dma|week)", text[match.end():], re.I):
+            continue
+        value = _claim_value(raw)
+        if value is None or not _near(value, allowed_bare, 0.5):
+            errors.append(f"{raw} does not match a value in the feed")
+
+    adv = pools["advancers"]
+    dec = pools["decliners"]
+    if adv is not None and dec is not None:
+        if dec > adv and _BULL_BREADTH.search(text):
+            errors.append(
+                f"breadth says most stocks held up, but decliners ({int(dec)}) "
+                f"outnumber advancers ({int(adv)})"
+            )
+        if adv > dec and _BEAR_BREADTH.search(text):
+            errors.append(
+                f"breadth says most stocks fell, but advancers ({int(adv)}) "
+                f"outnumber decliners ({int(dec)})"
+            )
+
+    ahead = _split_sections(text).get("week_ahead", "")
+    named = []
+    for bullet in ctx.get("week_ahead_bullets") or []:
+        event = (bullet.get("event") or "").strip()
+        if event and event.lower() in ahead.lower():
+            named.append(event)
+    if len(named) > 2:
+        errors.append(
+            "week ahead prose names more than two calendar items: " + ", ".join(named)
+        )
+    return errors
+
+
+def _alert_weekly_failure(message: str) -> None:
+    logger.error("weekly brief aborted: %s", message)
+    url = os.getenv("SLACK_WEBHOOK_URL", "").strip()
+    if not url:
+        return
+    try:
+        import requests
+
+        requests.post(url, json={"text": f"Weekly brief aborted: {message[:500]}"}, timeout=8)
+    except Exception as exc:
+        logger.warning("weekly alert failed: %s", exc)
+
+
 def _llm(user: str, max_tokens: int = 1800, temp: float = 0.7) -> str:
     from llm_client import call_claude, text_block
 
@@ -555,33 +852,98 @@ def _llm(user: str, max_tokens: int = 1800, temp: float = 0.7) -> str:
     )
 
 
-def _synthesize(feed: str, allowed: set) -> str:
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        raise BriefDataUnavailable("ANTHROPIC_API_KEY missing; cannot synthesize weekly brief")
-
-    user = f"DATA FEED\n--------\n{feed}\n\nWrite the weekly email now using ONLY the feed."
-    md = _llm(user)
-
+def _finish_draft(md: str, allowed: set) -> str:
     bad = _find_fabricated(md, allowed)
     if bad:
-        logger.warning("weekly: fabricated tickers %s — retrying with feedback", bad)
-        retry_user = (
-            user
-            + f"\n\nVIOLATION: you named tickers not in the feed: {', '.join('$' + b for b in bad)}. "
-            "Rewrite using ONLY tickers present in the DATA FEED."
-        )
-        md = _llm(retry_user)
-        bad = _find_fabricated(md, allowed)
-        if bad:
-            logger.error("weekly: still fabricating %s — scrubbing offending cashtags", bad)
-            for b in bad:
-                md = re.sub(rf"\${re.escape(b)}\b", "", md)
-
+        logger.error("weekly: still fabricating %s — scrubbing offending cashtags", bad)
+        for ticker in bad:
+            md = re.sub(rf"\${re.escape(ticker)}\b", "", md)
     try:
         md = _rewrite_in_voice(md)
     except Exception as e:
         logger.warning("voice pass skipped: %s", e)
     return md
+
+
+def _synthesize(feed: str, allowed: set, ctx: Optional[Dict[str, Any]] = None) -> str:
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        raise BriefDataUnavailable("ANTHROPIC_API_KEY missing; cannot synthesize weekly brief")
+
+    user = f"DATA FEED\n--------\n{feed}\n\nWrite the weekly email now using ONLY the feed."
+    md = _llm(user)
+    bad = _find_fabricated(md, allowed)
+    if bad:
+        logger.warning("weekly: fabricated tickers %s — retrying with feedback", bad)
+        md = _llm(
+            user
+            + f"\n\nVIOLATION: you named tickers not in the feed: {', '.join('$' + b for b in bad)}. "
+            "Rewrite using ONLY tickers present in the DATA FEED."
+        )
+    md = _finish_draft(md, allowed)
+    if ctx is None:
+        return md
+
+    errors = check_weekly_prose(md, ctx)
+    if not errors:
+        logger.info("numeric-check ok")
+        return md
+    logger.warning("numeric-check failed: %s", "; ".join(errors))
+    md = _llm(user + "\n\nVIOLATION: " + "; ".join(errors) + " Rewrite so every number and breadth claim matches the feed.")
+    md = _finish_draft(md, allowed)
+    errors = check_weekly_prose(md, ctx)
+    if errors:
+        message = "numeric-check failed: " + "; ".join(errors)
+        logger.warning(message)
+        _alert_weekly_failure(message)
+        raise BriefDataUnavailable(message)
+    logger.info("numeric-check ok")
+    return md
+
+
+def _apply_mover_whys(md: str, movers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    match = re.search(r"^##\s+MOVER WHY\s*$([\s\S]*?)(?=^##\s|\Z)", md or "", flags=re.MULTILINE)
+    if not match:
+        return movers
+    decisions: Dict[str, str] = {}
+    for line in match.group(1).splitlines():
+        parsed = re.match(r"\$?([A-Z]{1,5})\s*:\s*(.+)", line.strip())
+        if parsed:
+            decisions[parsed.group(1)] = parsed.group(2).strip()
+    if not decisions:
+        return movers
+    kept: List[Dict[str, Any]] = []
+    for row in movers:
+        decision = decisions.get(str(row.get("ticker") or "").upper())
+        if decision is None:
+            kept.append(row)
+            continue
+        if decision.upper() == "DROP":
+            continue
+        kept.append({**row, "why": decision})
+    return kept
+
+
+def _clip_preheader(text: str, limit: int = 90) -> str:
+    cleaned = re.sub(r"\s+", " ", text or "").strip()
+    if len(cleaned) <= limit:
+        return cleaned
+    cut = cleaned[:limit].rsplit(" ", 1)[0].rstrip(".,;:")
+    return cut or cleaned[:limit].rstrip()
+
+
+def _week_ahead_subject(next_mon, tape: List[Dict[str, Any]], sectors: List[Dict[str, Any]]) -> str:
+    next_fri = next_mon + timedelta(days=4)
+    span = f"{next_mon.strftime('%b')} {next_mon.day}–{next_fri.day}"
+    bits: List[str] = []
+    qqq = next((row.get("pct") for row in tape if row.get("symbol") == "QQQ"), None)
+    tech = next((row.get("pct") for row in sectors if row.get("etf") == "XLK"), None)
+    if qqq is not None:
+        bits.append(f"QQQ {qqq:+.1f}%")
+    if tech is not None:
+        bits.append(f"tech {tech:+.1f}%")
+    if not bits:
+        return f"Week ahead {span}"
+    return f"Week ahead {span}: {', '.join(bits)}"
 
 
 _SECTION_KEYS = {
@@ -647,17 +1009,23 @@ def build_weekly_brief() -> Dict[str, Any]:
             "price": _spot(sym),
             "pct": round(wk, 2) if wk is not None else None,
         })
-    vix_v = prices.get("vix", {}).get("current_price")
-    tape.append({
-        "symbol": "VIX",
-        "price": f"{vix_v:.2f}" if isinstance(vix_v, (int, float)) and vix_v else "—",
-        "pct": None,
-    })
-
     spy_pct = next((t.get("pct") for t in tape if t["symbol"] == "SPY"), None)
     qqq_pct = next((t.get("pct") for t in tape if t["symbol"] == "QQQ"), None)
     if spy_pct is None and qqq_pct is None:
         raise BriefDataUnavailable("Missing weekly index returns for SPY/QQQ")
+
+    vix_v = prices.get("vix", {}).get("current_price")
+    vix_pct = _weekly_index_change("VIX", mon, fri)
+    if vix_pct is None:
+        vix_pct = _vix_change_from_yahoo(mon, fri)
+    if vix_pct is None:
+        _alert_weekly_failure("Missing VIX weekly change")
+        raise BriefDataUnavailable("Missing VIX weekly change")
+    tape.append({
+        "symbol": "VIX",
+        "price": f"{vix_v:.2f}" if isinstance(vix_v, (int, float)) and vix_v else "—",
+        "pct": round(vix_pct, 2),
+    })
 
     sectors = _weekly_sectors(mon, fri)
     if not sectors:
@@ -667,11 +1035,14 @@ def build_weekly_brief() -> Dict[str, Any]:
     if not internals:
         data_stale = True
 
-    # Same pipeline as the daily brief: skip leveraged products and keep
-    # walking the Friday universe until the slots are real stocks.
-    movers = _friday_session_movers(fri)
+    # Mon-open to Fri-close. A Friday-only fallback is badged with the weekday.
+    movers = _weekly_movers(mon, fri)
     if not movers:
         movers = _filter_av_movers(_movers_from_av())
+        weekday = fri.strftime("%a")
+        for row in movers:
+            row["window"] = "session"
+            row["windowLabel"] = weekday
 
     levels: Dict[str, Any] = {}
     for sym in ("SPY", "QQQ"):
@@ -692,7 +1063,13 @@ def build_weekly_brief() -> Dict[str, Any]:
                 }
         data_stale = True
 
+    from movers_filter import company_base_name
+
     movers = [m for m in movers if _has_news_catalyst(m)]
+    for row in movers:
+        base = company_base_name(row.get("companyName") or "")
+        if base:
+            row["companyName"] = base
 
     week_ahead = _week_ahead_bullets(next_mon)
     earnings = _earnings_bullets(next_mon)
@@ -701,7 +1078,18 @@ def build_weekly_brief() -> Dict[str, Any]:
         week_label, tape, sectors, movers, levels, week_ahead, internals, earnings
     )
     allowed = _allowed_tickers(tape, sectors, movers) | _earnings_symbols(earnings)
-    md = _synthesize(feed, allowed)
+    check_ctx = {
+        "tape": tape,
+        "sectors": sectors,
+        "movers": movers,
+        "levels": levels,
+        "internals": internals,
+        "week_ahead_bullets": week_ahead,
+    }
+    md = _synthesize(feed, allowed, check_ctx)
+    movers = _apply_mover_whys(md, movers)
+    for row in movers:
+        row.pop("_headlines", None)
     secs = _split_sections(md)
     for key, val in list(secs.items()):
         secs[key] = _sanitize_ai_field(val)
@@ -717,9 +1105,7 @@ def build_weekly_brief() -> Dict[str, Any]:
     if not sections["week_in_review_html"] and not sections["major_driver"]:
         raise BriefDataUnavailable("Weekly synthesis returned no usable narrative")
 
-    preheader = (sections["major_driver"][:120] if sections["major_driver"] else "") or (
-        "Your weekly market recap and the week ahead"
-    )
+    preheader = _clip_preheader(sections["major_driver"]) or "Your weekly market recap and the week ahead"
 
     return {
         "brand": {"name": "Options Plunge", "app_url": "https://optionsplunge.com/dashboard"},
@@ -741,7 +1127,7 @@ def build_weekly_brief() -> Dict[str, Any]:
             "friday": fri.strftime("%Y-%m-%d"),
             "label": week_label,
         },
-        "subject": f"Options Plunge — Weekly Brief — {week_label}",
+        "subject": _week_ahead_subject(next_mon, tape, sectors),
     }
 
 

@@ -34,7 +34,7 @@ SECTOR SCORECARD
 {% if movers -%}
 NOTABLE MOVERS
 {% for m in movers -%}
-${{ m.ticker }}{% if m.companyName %} ({{ m.companyName }}){% endif %} {{ m.pct }}{% if m.why %} — {{ m.why }}{% endif %}
+${{ m.ticker }}{% if m.companyName %} ({{ m.companyName }}){% endif %} {{ m.pct }}{% if m.windowLabel %} [{{ m.windowLabel }}]{% endif %}{% if m.why %} — {{ m.why }}{% endif %}
 
 {% endfor %}
 

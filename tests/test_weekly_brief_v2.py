@@ -185,10 +185,84 @@ class TestWeeklyBriefHelpers:
         assert bullets[0] == {"date": "Tue", "event": "IBM, NFLX", "why": "After the close"}
         assert bullets[1] == {"date": "Thu", "event": "AAPL", "why": "Before the open"}
 
+    def test_explaining_headline_drops_a_story_about_a_different_company(self):
+        from movers_filter import pick_explaining_headline
+
+        title = "Prediction: Microsoft Stock Is Going to Soar After Oct. 28"
+        assert pick_explaining_headline([title], "CRWV", "CoreWeave, Inc.") is None
+
+    def test_explaining_headline_prefers_a_fact_over_an_opinion(self):
+        from movers_filter import pick_explaining_headline
+
+        chosen = pick_explaining_headline(
+            [
+                "Prediction: CoreWeave is going to soar",
+                "CoreWeave shares slide after a bond sale",
+            ],
+            "CRWV",
+            "CoreWeave, Inc. Class A Ordinary Shares",
+        )
+        assert chosen == "CoreWeave shares slide after a bond sale"
+
+    def test_points_claim_fails_when_the_feed_is_a_percent(self):
+        from weekly_brief_v2 import check_weekly_prose
+
+        errors = check_weekly_prose(
+            "QQQ lost more than five points.",
+            {
+                "tape": [{"symbol": "QQQ", "price": "$752.00", "pct": -5.32}],
+                "sectors": [],
+                "movers": [],
+                "levels": {},
+                "internals": {},
+                "week_ahead_bullets": [],
+            },
+        )
+        assert any("points" in err for err in errors)
+
+    def test_breadth_claim_fails_when_decliners_lead(self):
+        from weekly_brief_v2 import check_weekly_prose
+
+        errors = check_weekly_prose(
+            "A market where most stocks held up.",
+            {
+                "tape": [],
+                "sectors": [],
+                "movers": [],
+                "levels": {},
+                "internals": {"breadth": {"advancers": 753, "decliners": 1357}},
+                "week_ahead_bullets": [],
+            },
+        )
+        assert any("decliners" in err for err in errors)
+
+    def test_preheader_stops_on_a_word(self):
+        from weekly_brief_v2 import _clip_preheader
+
+        text = "Technology was the clear engine of a sharp weekly selloff that hit growth and high-beta names hardest"
+        clipped = _clip_preheader(text, limit=40)
+        assert len(clipped) <= 40
+        assert not clipped.endswith("engin")
+        assert " " not in clipped[-1:]
+
+    def test_company_suffixes_are_stripped(self):
+        from movers_filter import company_base_name
+
+        assert company_base_name("IREN Class A Ordinary Shares") == "IREN"
+        assert company_base_name("NVIDIA Corporation") == "NVIDIA"
+
+    def test_missing_earnings_hour_says_time_tba(self):
+        from weekly_brief_v2 import _earnings_bullets_from_rows
+
+        bullets = _earnings_bullets_from_rows(
+            [{"date": "2026-10-21", "symbol": "XOM", "hour": "", "revenue_estimate": 80_000_000_000, "eps_estimate": 1.8}]
+        )
+        assert bullets == [{"date": "Wed", "event": "XOM", "why": "Time TBA"}]
+
 
 class TestBuildWeeklyBrief:
     @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key", "MASSIVE_API_KEY": "test-massive"})
-    @patch("weekly_brief_v2._friday_session_movers", return_value=[
+    @patch("weekly_brief_v2._weekly_movers", return_value=[
         {"ticker": "NVDA", "pct": "+4.50%", "dir": "up", "why": "AI demand"},
     ])
     @patch("weekly_brief_v2._rewrite_in_voice", side_effect=lambda x: x)
@@ -359,6 +433,37 @@ class TestBuildWeeklyBrief:
         }
 
         with pytest.raises(BriefDataUnavailable, match="Missing weekly index returns"):
+            build_weekly_brief()
+
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}, clear=False)
+    @patch("weekly_brief_v2._vix_change_from_yahoo", return_value=None)
+    @patch("weekly_brief_v2._weekly_index_change")
+    @patch("weekly_brief_v2.fetch_stock_prices_strict")
+    @patch("weekly_brief_v2._last_completed_week_range")
+    def test_missing_vix_weekly_change_aborts(
+        self,
+        mock_week_range,
+        mock_prices,
+        mock_index_chg,
+        _mock_yahoo,
+    ):
+        from weekly_brief_v2 import BriefDataUnavailable, build_weekly_brief
+
+        mock_week_range.return_value = (date(2026, 10, 12), date(2026, 10, 16))
+        mock_prices.return_value = {
+            "spy": {"current_price": 610.0},
+            "qqq": {"current_price": 540.0},
+            "iwm": {"current_price": 210.0},
+            "vix": {"current_price": 16.5},
+        }
+
+        def _change(symbol, _mon, _fri):
+            if symbol == "VIX":
+                return None
+            return -1.2
+
+        mock_index_chg.side_effect = _change
+        with pytest.raises(BriefDataUnavailable, match="Missing VIX weekly change"):
             build_weekly_brief()
 
 

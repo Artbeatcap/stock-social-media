@@ -169,12 +169,149 @@ def score_mover(snap: Dict[str, Any]) -> float:
     return abs_change * math.log10(max(dollar_volume / SESSION_SCORE_DIVISOR, 1.01))
 
 
+_LEGAL_SUFFIX = re.compile(
+    r"\b(?:incorporated|inc|corp|corporation|ltd|limited|plc|"
+    r"n\.v|s\.a|company|co|class\s+[a-z]|ordinary\s+shares|"
+    r"common\s+stock|american\s+depositary\s+shares|depositary\s+shares)\b\.?",
+    re.I,
+)
+_OPINION_HEADLINE = (
+    re.compile(r"^\s*prediction\s*:", re.I),
+    re.compile(r"\bis\b.+\b(?:stock\s+)?(?:still\s+)?a(?:\s+\w+){0,2}\s+buy\b", re.I),
+    re.compile(r"here'?s why i'?m", re.I),
+    re.compile(r"should you buy", re.I),
+    re.compile(r"\bstocks to buy\b", re.I),
+)
+
+
+def company_base_name(name: str) -> str:
+    """Drop legal suffixes so 'Class A Ordinary Shares' does not wrap as the name."""
+    text = name or ""
+    previous = None
+    while previous != text:
+        previous = text
+        text = _LEGAL_SUFFIX.sub(" ", text)
+        text = re.sub(r"[,.\s]+", " ", text).strip(" ,.-")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def is_opinion_headline(title: str) -> bool:
+    return any(pattern.search(title or "") for pattern in _OPINION_HEADLINE)
+
+
+def title_names_subject(title: str, ticker: str, company_name: str) -> bool:
+    """A headline explains the move only when it names this ticker or company."""
+    text = title or ""
+    symbol = (ticker or "").strip()
+    if symbol and re.search(rf"(?<![A-Za-z]){re.escape(symbol)}(?![A-Za-z])", text, re.I):
+        return True
+    base = company_base_name(company_name)
+    if len(base) >= 2 and re.search(rf"(?<![A-Za-z]){re.escape(base)}(?![A-Za-z])", text, re.I):
+        return True
+    return False
+
+
+def pick_explaining_headline(
+    titles: List[str],
+    ticker: str,
+    company_name: str,
+) -> Optional[str]:
+    """Best headline that names the company. Opinion pieces rank below facts."""
+    best: Optional[str] = None
+    best_score = -1
+    for title in titles:
+        cleaned = (title or "").strip()
+        if not cleaned or not title_names_subject(cleaned, ticker, company_name):
+            continue
+        score = 1 if is_opinion_headline(cleaned) else 2
+        if score > best_score:
+            best = cleaned
+            best_score = score
+    return best
+
+
 def _truncate_headline(text: str, limit: int = 90) -> str:
     text = (text or "").strip()
     if len(text) <= limit:
         return text
     cut = text[:limit].rsplit(" ", 1)[0]
     return (cut or text[:limit]).rstrip(".,;:") + "…"
+
+
+def _fetch_news_articles(
+    ticker: str,
+    limit: int = 10,
+    since: Optional[datetime] = None,
+    until: Optional[datetime] = None,
+) -> List[Dict[str, Any]]:
+    from datetime import timezone as tz
+    from market_internals import PolygonError, _polygon_get
+
+    if since is None:
+        since = datetime.now(tz.utc) - timedelta(hours=36)
+    params = {
+        "ticker": ticker,
+        "published_utc.gte": since.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "order": "desc",
+        "sort": "published_utc",
+        "limit": limit,
+    }
+    if until is not None:
+        params["published_utc.lte"] = until.strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        data = _polygon_get(
+            "/v2/reference/news",
+            params=params,
+        )
+    except PolygonError as exc:
+        logger.info("mover news lookup failed for %s: %s", ticker, exc)
+        return []
+    return list(data.get("results") or [])
+
+
+def _explaining_news(
+    ticker: str,
+    company_name: str,
+    since: Optional[datetime] = None,
+    until: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    """Headline that names this company. A tagged-but-unrelated story does not count."""
+    from premarket_movers import classify_news
+
+    empty = {"why": None, "url": None, "is_earnings": False, "sentiment": None, "headlines": []}
+    articles = _fetch_news_articles(ticker, since=since, until=until)
+    titles = [
+        (article.get("title") or article.get("headline") or "").strip()
+        for article in articles
+    ]
+    # Opinion columns can name the company and still not explain the move.
+    factual_titles = [title for title in titles if title and not is_opinion_headline(title)]
+    chosen = pick_explaining_headline(factual_titles, ticker, company_name)
+    if not chosen:
+        return empty
+    match = next(
+        (
+            article
+            for article in articles
+            if (article.get("title") or article.get("headline") or "").strip() == chosen
+        ),
+        {},
+    )
+    url = match.get("article_url") or match.get("url")
+    tags = classify_news(match, ticker) if match else {"is_earnings": False, "sentiment": None}
+    qualifying = [
+        title
+        for title in titles
+        if title and title_names_subject(title, ticker, company_name)
+    ]
+    factual = [title for title in qualifying if not is_opinion_headline(title)]
+    return {
+        "why": _truncate_headline(chosen),
+        "url": str(url) if url else None,
+        "is_earnings": tags["is_earnings"],
+        "sentiment": tags["sentiment"],
+        "headlines": factual or qualifying,
+    }
 
 
 def _enrich_reason_full(ticker: str, *, strict: bool = True) -> Dict[str, Any]:
@@ -431,7 +568,10 @@ def select_notable_movers(
     now: Optional[datetime] = None,
     enrich_news: bool = True,
     window: str = "prior_session",
+    window_label: Optional[str] = None,
     require_news: bool = False,
+    news_since: Optional[datetime] = None,
+    news_until: Optional[datetime] = None,
 ) -> List[Dict[str, Any]]:
     """
     Return at most 6 brief-ready movers. Empty list → omit the section.
@@ -442,6 +582,7 @@ def select_notable_movers(
     """
     fetch_meta = fetch_meta or get_ticker_meta
     split_check = split_check or ticker_had_recent_split
+    use_explaining = require_news and enrich is None
     enrich = enrich or _enrich_reason_full
     now = now or datetime.now()
     split_since = (now - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -504,9 +645,21 @@ def select_notable_movers(
     for snap in scan:
         if require_news and len(rows) >= 6:
             break
-        news = {"why": None, "url": None, "is_earnings": False, "sentiment": None}
+        news = {"why": None, "url": None, "is_earnings": False, "sentiment": None, "headlines": []}
         if enrich_news:
-            news = _normalize_enrichment(enrich(snap["ticker"]))
+            if use_explaining:
+                company = ""
+                meta = snap.get("_meta")
+                if meta is not None:
+                    company = getattr(meta, "name", "") or ""
+                news = _explaining_news(
+                    snap["ticker"],
+                    company,
+                    since=news_since,
+                    until=news_until,
+                )
+            else:
+                news = _normalize_enrichment(enrich(snap["ticker"]))
         if require_news and not (news.get("why") or "").strip():
             continue
         if require_news:
@@ -526,8 +679,11 @@ def select_notable_movers(
             news["why"],
             news["url"],
             window=window,
+            window_label=window_label,
             is_earnings=news["is_earnings"],
         )
+        if news.get("headlines"):
+            row["_headlines"] = list(news["headlines"])
         row["_price"] = round(_price(snap), 4)
         row["_dollarVolume"] = round(_price(snap) * _volume(snap), 2)
         rows.append(row)

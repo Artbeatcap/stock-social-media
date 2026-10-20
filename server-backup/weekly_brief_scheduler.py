@@ -2,8 +2,8 @@
 """
 Weekly Market Brief Scheduler
 
-Default: Sundays at 08:00 AM ET.
-Override with env WEEKLY_CRON (e.g., "sun 08:00" or a full Quartz expression).
+Default: Sundays at 6:00 PM ET, after the cash session and before the next open.
+Override with env WEEKLY_CRON (e.g., "sun 18:00" or a full Quartz expression).
 """
 
 import os
@@ -35,8 +35,8 @@ def start_weekly_brief_scheduler():
         # Create scheduler
         scheduler = BackgroundScheduler(timezone=tz)
         
-        # Default: Sunday 08:00 ET
-        default_trigger = CronTrigger(day_of_week='sun', hour=8, minute=0, timezone=tz)
+        # Default: Sunday 18:00 ET
+        default_trigger = CronTrigger(day_of_week='sun', hour=18, minute=0, timezone=tz)
         # Allow override via WEEKLY_CRON (e.g., "sun 08:00")
         cron_expr = os.getenv("WEEKLY_CRON", "").strip()
         trigger = default_trigger
@@ -51,7 +51,7 @@ def start_weekly_brief_scheduler():
                     # Assume Quartz-style expression
                     trigger = CronTrigger.from_crontab(cron_expr, timezone=tz)
             except Exception as e:
-                print(f"WEEKLY_CRON invalid ({e}); using default Sunday 08:00 ET.")
+                print(f"WEEKLY_CRON invalid ({e}); using default Sunday 18:00 ET.")
         
         # Add weekly brief job
         scheduler.add_job(func=send_weekly_brief_job,
@@ -107,7 +107,7 @@ def send_weekly_brief_job():
 
 def main():
     """Main function to run the scheduler."""
-    print("📅 Weekly Market Brief Scheduler starting… (default Sunday 08:00 ET)")
+    print("📅 Weekly Market Brief Scheduler starting… (default Sunday 18:00 ET)")
     sched = start_weekly_brief_scheduler()
     try:
         while True:
