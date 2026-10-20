@@ -332,22 +332,12 @@ def _fetch_friday_internals(fri) -> Optional[Dict[str, Any]]:
 
 def _trim_week_events(events: List[Dict[str, str]], limit: int = _WEEK_AHEAD_LIMIT) -> List[Dict[str, str]]:
     """Keep the week scannable. High-impact prints win a slot when the list is long."""
-    ordered = sorted(events, key=lambda e: (e.get("date") or "", e.get("event") or ""))
-    if len(ordered) <= limit:
-        return ordered
-    highs = [e for e in ordered if str(e.get("impact") or "").lower() == "high"]
-    if len(highs) >= limit:
-        return highs[:limit]
-    chosen = list(highs)
-    seen = {(e.get("date"), e.get("event")) for e in chosen}
-    for event in ordered:
-        if len(chosen) >= limit:
-            break
-        key = (event.get("date"), event.get("event"))
-        if key in seen:
-            continue
-        chosen.append(event)
-        seen.add(key)
+    def rank(event: Dict[str, str]) -> int:
+        impact = str(event.get("impact") or "").lower()
+        return {"high": 0, "medium": 1}.get(impact, 2)
+
+    ranked = sorted(events, key=lambda e: (rank(e), e.get("date") or "", e.get("event") or ""))
+    chosen = ranked[:limit]
     chosen.sort(key=lambda e: (e.get("date") or "", e.get("event") or ""))
     return chosen
 

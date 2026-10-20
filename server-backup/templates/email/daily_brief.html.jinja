@@ -39,41 +39,44 @@
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4efe6;">
     <tr><td align="center" style="padding:24px 12px;">
 
-      <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:640px;background:#ffffff;border-radius:16px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;background:#ffffff;border-radius:16px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 
         <!-- ===== HEADER ===== -->
         <tr>
-          <td style="background:#1e3a4c;background-image:linear-gradient(135deg,#1e3a4c 0%,#2f5870 100%);padding:30px 28px 24px 28px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td align="left" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-                  <div class="kicker" style="color:#4ea1ff;">{{ brand.name }} · Morning Brief</div>
-                  <div class="h1" style="color:#ffffff;margin-top:8px;">Into the Open</div>
-                  <div class="muted" style="color:#9fb0c9;margin-top:6px;font-size:13px;">{{ date_label }}</div>
-                </td>
-              </tr>
-            </table>
+          <td class="px" style="background:#ffffff;padding:28px 28px 8px 28px;">
+            <div class="kicker" style="color:#2f6bff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">{{ brand.name }} · Morning Brief</div>
+            <div class="h1" style="color:#1a2744;margin-top:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Into the Open</div>
+            <div class="muted" style="color:#6b7785;margin-top:6px;font-size:13px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">{{ date_label }}</div>
           </td>
         </tr>
 
         <!-- ===== TAPE STRIP ===== -->
         {% if tape %}
         <tr>
-          <td style="background:#1e3a4c;padding:0 16px 22px 16px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#173246;border:1px solid #2c4a60;border-radius:12px;">
+          <td style="background:#ffffff;padding:8px 16px 18px 16px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 {% for t in tape %}
-                <td class="tape-cell stack" align="center" width="25%" style="padding:14px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-left:{% if not loop.first %}1px solid #2c4a60{% else %}none{% endif %};">
-                  <div style="font-size:12px;font-weight:700;color:#9fb0c9;letter-spacing:0.06em;">{{ t.symbol }}</div>
-                  <div style="font-size:17px;font-weight:800;color:#ffffff;margin-top:3px;">{{ t.price }}</div>
-                  <div style="font-size:13px;font-weight:700;margin-top:2px;color:{% if t.pct is not none and t.pct < 0 %}#ff6b81{% elif t.pct is not none and t.pct > 0 %}#3ddc84{% else %}#9fb0c9{% endif %};">
-                    {% if t.pct is not none %}{{ '%+.2f'|format(t.pct) }}%{% else %}—{% endif %}
-                  </div>
+                {% if loop.index0 > 0 and loop.index0 % 2 == 0 %}
+              </tr><tr>
+                {% endif %}
+                <td class="tape-cell" width="50%" valign="top" style="padding:6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f4ee;border:1px solid #e7e1d6;border-radius:10px;">
+                    <tr>
+                      <td style="padding:12px 14px;">
+                        <div style="font-size:12px;font-weight:700;color:#5c6b7a;letter-spacing:0.06em;">{{ t.symbol }}</div>
+                        <div style="font-size:18px;font-weight:800;color:#1a2744;margin-top:2px;">{{ t.price }}</div>
+                        <div style="font-size:13px;font-weight:700;margin-top:2px;color:{% if t.pct is not none and t.pct < 0 %}#d1435b{% elif t.pct is not none and t.pct > 0 %}#128a52{% else %}#6b7785{% endif %};">
+                          {% if t.pct is not none %}{{ '%+.2f'|format(t.pct) }}%{% else %}—{% endif %}
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
                 </td>
                 {% endfor %}
               </tr>
             </table>
-            <div style="font-size:11px;color:#5d6b82;text-align:center;padding-top:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Spot · overnight / session change</div>
+            <div style="font-size:11px;color:#8a97a8;text-align:center;padding-top:6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Spot · overnight / session change</div>
           </td>
         </tr>
         {% endif %}
@@ -171,18 +174,18 @@
           <td class="px" style="padding-top:28px;">
             <div class="sec-title" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:2px solid #eef1f6;padding-bottom:8px;margin-bottom:14px;">Levels for Today</div>
             {% for sym, d in levels.items() %}
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;background:#1e3a4c;border-radius:10px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;background:#f7f4ee;border:1px solid #e7e1d6;border-radius:10px;">
               <tr>
                 <td style="padding:14px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-                  <div style="font-size:13px;font-weight:800;color:#4ea1ff;letter-spacing:0.06em;margin-bottom:8px;">{{ sym|upper }}{% if d.pivot %} · pivot {{ d.pivot }}{% endif %}</div>
+                  <div style="font-size:13px;font-weight:800;color:#1a2744;letter-spacing:0.06em;margin-bottom:8px;">{{ sym|upper }}{% if d.pivot %} · pivot {{ d.pivot }}{% endif %}</div>
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
                     <td width="50%" style="vertical-align:top;">
-                      <div style="font-size:11px;color:#7b8aa3;text-transform:uppercase;letter-spacing:0.08em;">Support</div>
-                      <div style="font-size:14px;color:#3ddc84;font-weight:600;margin-top:3px;">{{ d.support }}{% if d.support2 %} &nbsp;·&nbsp; {{ d.support2 }}{% endif %}</div>
+                      <div style="font-size:11px;color:#6b7785;text-transform:uppercase;letter-spacing:0.08em;">Support</div>
+                      <div style="font-size:14px;color:#128a52;font-weight:600;margin-top:3px;">{{ d.support }}{% if d.support2 %} &nbsp;·&nbsp; {{ d.support2 }}{% endif %}</div>
                     </td>
                     <td width="50%" style="vertical-align:top;">
-                      <div style="font-size:11px;color:#7b8aa3;text-transform:uppercase;letter-spacing:0.08em;">Resistance</div>
-                      <div style="font-size:14px;color:#ff8a9b;font-weight:600;margin-top:3px;">{{ d.resistance }}{% if d.resistance2 %} &nbsp;·&nbsp; {{ d.resistance2 }}{% endif %}</div>
+                      <div style="font-size:11px;color:#6b7785;text-transform:uppercase;letter-spacing:0.08em;">Resistance</div>
+                      <div style="font-size:14px;color:#d1435b;font-weight:600;margin-top:3px;">{{ d.resistance }}{% if d.resistance2 %} &nbsp;·&nbsp; {{ d.resistance2 }}{% endif %}</div>
                     </td>
                   </tr></table>
                 </td>

@@ -149,6 +149,16 @@ class TestWeeklyBriefHelpers:
         assert dated[0]["date"] == "2026-10-20"
         assert dated[0]["why"] == "Housing"
         assert dated[1]["why"] == "Labor market"
+        low_home = _select_major_us_events(
+            [{"country": "US", "event": "Pending Home Sales m/m", "impact": "low", "time": "2026-10-20 10:00:00"}],
+            "2026-10-19",
+        )
+        assert low_home[0]["event"] == "Pending Home Sales m/m"
+        noise = _select_major_us_events(
+            [{"country": "US", "event": "API Weekly Statistical Bulletin", "impact": "low", "time": "2026-10-20 16:30:00"}],
+            "2026-10-19",
+        )
+        assert noise == []
 
     def test_trim_keeps_high_impact_when_the_week_is_crowded(self):
         from weekly_brief_v2 import _trim_week_events
@@ -374,6 +384,8 @@ class TestTemplateRender:
         assert "Pending Home Sales" in html
         assert "#f4efe6" in html
         assert "#0b0f17" not in html
+        assert "#1e3a4c" not in html
+        assert "The Week in Markets" in html
         assert "EARNINGS ON DECK" in text
 
 

@@ -82,7 +82,12 @@ def _cache_put_json(key: str, data: Dict[str, Any]) -> None:
 
 def _fh_api_key() -> str | None:
     """Get Finnhub API key from config or environment."""
-    return (current_app.config.get('FINNHUB_TOKEN') if current_app else None) or os.getenv('FINNHUB_TOKEN')
+    token = None
+    try:
+        token = current_app.config.get('FINNHUB_TOKEN')
+    except Exception:
+        token = None
+    return token or os.getenv('FINNHUB_TOKEN')
 
 # Names that actually move the US tape. Broader than the old CPI/payroll list so
 # housing, sentiment, and PCE survive, without letting every low-impact print in.
@@ -96,7 +101,6 @@ _MAJOR_EVENT_TERMS = (
     "consumer sentiment", "consumer confidence", "michigan",
     "inflation expectation",
     "pending home", "existing home", "new home sales",
-    "housing starts", "building permits",
     "durable goods",
     "personal income", "personal spending",
 )
@@ -159,7 +163,12 @@ def _select_major_us_events(data: List[Dict[str, Any]], fallback_date: str) -> L
         if not any(term in lowered for term in _MAJOR_EVENT_TERMS):
             continue
         impact = str(ev.get("impact") or "").strip().lower()
-        if impact == "low":
+        matched = any(term in lowered for term in _MAJOR_EVENT_TERMS)
+        # Low-impact noise stays out. A named major print stays even when a
+        # feed labels it low — pending home sales is the usual case.
+        if impact == "low" and not matched:
+            continue
+        if impact not in {"high", "medium", "low"} and not matched:
             continue
         day = _calendar_event_date(ev, fallback_date)
         key = (day, lowered)
@@ -201,10 +210,65 @@ def fetch_economic_calendar_today() -> List[Dict[str, str]]:
             out = _select_major_us_events(data, today)
             if out:
                 return out
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Finnhub economic calendar failed: %s", exc)
+    today_date = datetime.now(tz=NY).date()
+    fallback = _fetch_faireconomy_calendar(today_date, today_date + timedelta(days=1))
+    if fallback:
+        return fallback
     # FALLBACK → AV inference
     return fetch_economic_catalysts_today_av()
+
+_FF_CALENDAR_URLS = (
+    "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
+    "https://nfs.faireconomy.media/ff_calendar_nextweek.json",
+)
+
+
+def _fetch_faireconomy_calendar(start_dt, end_dt) -> List[Dict[str, str]]:
+    """USD macro calendar for [start_dt, end_dt).
+
+    Finnhub's economic calendar is not on the current plan (403). This public
+    weekly feed is the source that actually returns claims, sentiment, and
+    housing prints.
+    """
+    raw_events: List[Dict[str, Any]] = []
+    for url in _FF_CALENDAR_URLS:
+        try:
+            response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=12)
+            if response.status_code != 200:
+                continue
+            payload = response.json()
+            if isinstance(payload, list):
+                raw_events.extend(payload)
+        except Exception as exc:
+            logger.warning("economic calendar feed failed %s: %s", url, exc)
+    start_iso = start_dt.isoformat()
+    end_iso = end_dt.isoformat()
+    normalized: List[Dict[str, Any]] = []
+    seen = set()
+    for ev in raw_events:
+        country = str(ev.get("country") or "").strip().upper()
+        if country not in {"USD", "US", "USA"}:
+            continue
+        day = str(ev.get("date") or "")[:10]
+        title = str(ev.get("title") or "").strip()
+        if not day or not title or day < start_iso or day >= end_iso:
+            continue
+        key = (day, title.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append({
+            "country": "US",
+            "event": title,
+            "impact": str(ev.get("impact") or "").strip().lower(),
+            "time": ev.get("date") or "",
+            "estimate": ev.get("forecast") or "",
+            "prev": ev.get("previous") or "",
+        })
+    return _select_major_us_events(normalized, start_iso)
+
 
 def fetch_economic_catalysts_today_av() -> List[Dict[str, str]]:
     """Fallback: Fetch economic catalysts using Alpha Vantage inference."""
@@ -233,9 +297,14 @@ def fetch_economic_calendar_range(days_ahead: int = 7, start: datetime | None = 
                 if raw:
                     _cache_put_json(cache_key, raw)
             data = (raw or {}).get("economicCalendar", [])
-            return _select_major_us_events(data, start_dt.isoformat())
-        except Exception:
-            pass
+            selected = _select_major_us_events(data, start_dt.isoformat())
+            if selected:
+                return selected
+        except Exception as exc:
+            logger.warning("Finnhub economic calendar failed: %s", exc)
+    fallback = _fetch_faireconomy_calendar(start_dt, end_dt)
+    if fallback:
+        return fallback
     # FALLBACK: AV inference (no dates/times/estimates guaranteed)
     cats = fetch_economic_catalysts_today_av()
     # Transform to week-ahead "best we can" list with today's date
