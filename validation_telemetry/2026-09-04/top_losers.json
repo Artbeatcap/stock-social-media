@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-04",
+  "movers": [
+    {
+      "ticker": "SNDQ",
+      "change_percentage": -23.8,
+      "price": 11.78,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "CBRZ",
+      "change_percentage": -20.79,
+      "price": 8.0,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "GWRE",
+      "change_percentage": -19.93,
+      "price": 162.42,
+      "catalyst": "Guidewire Software (GWRE) Q4 Earnings Preview: What You Should Know Beyond the Headline Estimates",
+      "volume": null
+    },
+    {
+      "ticker": "PSQL",
+      "change_percentage": -18.36,
+      "price": 7.96,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "EGAN",
+      "change_percentage": -17.86,
+      "price": 5.84,
+      "catalyst": "eGain to Announce Fiscal 2026 Fourth Quarter and Full Year Financial Results on September 3, 2026",
+      "volume": null
+    }
+  ]
+}
