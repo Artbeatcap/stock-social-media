@@ -233,3 +233,10 @@ __marimo__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Catalyst quality audit outputs (snapshots generated on prod / cloud runs)
+validation_telemetry/20*/
+validation_telemetry/reports/*.md
+validation_telemetry/research_log/*.md
+!validation_telemetry/reports/.gitkeep
+!validation_telemetry/research_log/.gitkeep
