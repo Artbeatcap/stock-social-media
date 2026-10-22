@@ -1,0 +1,40 @@
+{
+  "date": "2026-08-27",
+  "movers": [
+    {
+      "ticker": "BBW",
+      "change_percentage": -27.26,
+      "price": 28.44,
+      "catalyst": "What Has Build-A-Bear Stock Done For Investors?",
+      "volume": null
+    },
+    {
+      "ticker": "SMST",
+      "change_percentage": -23.11,
+      "price": 22.96,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "NVDQ",
+      "change_percentage": -17.38,
+      "price": 8.39,
+      "catalyst": "4 Best Inverse/Leveraged ETF Areas of Last Week",
+      "volume": null
+    },
+    {
+      "ticker": "WEN",
+      "change_percentage": -13.55,
+      "price": 7.82,
+      "catalyst": "Why Wendy's Stock Blasted Almost 15% Higher Today",
+      "volume": null
+    },
+    {
+      "ticker": "CRE",
+      "change_percentage": -13.36,
+      "price": 5.9,
+      "catalyst": "Cre8 Enterprise Limited Reports Record Number of Customers Served for the First Half of 2026",
+      "volume": null
+    }
+  ]
+}
