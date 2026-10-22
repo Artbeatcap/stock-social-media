@@ -1,0 +1,6 @@
+# Root-level scripts (twitter_auto_emailer, catalyst audits, massive_client)
+python-dotenv>=1.0.0
+pytz>=2024.1
+requests>=2.31.0
+openai>=1.0.0
+sendgrid>=6.10.0
