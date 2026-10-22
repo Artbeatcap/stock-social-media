@@ -1,0 +1,223 @@
+{
+  "date": "2026-08-28",
+  "time_period": "postmarket",
+  "recorded_at": "2026-08-29T09:11:39-04:00",
+  "top_gainers": [
+    {
+      "ticker": "IREZ",
+      "change_percentage": 24.68,
+      "price": 14.5,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "ESTC",
+      "change_percentage": 19.31,
+      "price": 99.91,
+      "catalyst": "Stock Market Midday, Aug. 28: Stocks Edge Higher on Fed's Clear Inflation Message",
+      "volume": null
+    },
+    {
+      "ticker": "QNRX",
+      "change_percentage": 18.72,
+      "price": 6.12,
+      "catalyst": "PRISM MarketView Spotlights Quoin Pharmaceuticals CEO Dr. Michael Myers as Specialty Pharma Shares News of Highly Positive Interim Data in M",
+      "volume": null
+    },
+    {
+      "ticker": "SMST",
+      "change_percentage": 14.55,
+      "price": 26.3,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "MSTZ",
+      "change_percentage": 14.47,
+      "price": 5.3,
+      "catalyst": "",
+      "volume": null
+    }
+  ],
+  "top_losers": [
+    {
+      "ticker": "WETO",
+      "change_percentage": -50.26,
+      "price": 5.72,
+      "catalyst": "Wetour Robotics Enters into US$20 Million North American Multi-Site Commercial Agreement for Orchestra Robotics Services",
+      "volume": null
+    },
+    {
+      "ticker": "VISN",
+      "change_percentage": -47.89,
+      "price": 6.06,
+      "catalyst": "An Investor Just Bought $6 Million of This Stock That's Up 272% in a Year. Here's Whether It Still Has Room to Run",
+      "volume": null
+    },
+    {
+      "ticker": "PYPG",
+      "change_percentage": -25.74,
+      "price": 7.3,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "IREX",
+      "change_percentage": -25.44,
+      "price": 10.55,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "IRE",
+      "change_percentage": -25.38,
+      "price": 7.32,
+      "catalyst": "",
+      "volume": null
+    }
+  ],
+  "featured_mover": {
+    "ticker": "ESTC",
+    "symbol": "ESTC",
+    "change_percentage": 0.0,
+    "price": 99.91,
+    "last": 99.91,
+    "catalyst": "Stock Market Midday, Aug. 28: Stocks Edge Higher on Fed's Clear Inflation Message",
+    "volume": 0
+  },
+  "featured_stock": "ESTC",
+  "post": "Bootstrapped telemetry for catalyst audit (2026-08-28)",
+  "style": "bootstrap",
+  "market_internals": {
+    "as_of": "2026-08-29T13:11:37",
+    "sectors": [
+      {
+        "etf": "XLC",
+        "name": "Communication Services",
+        "pct": 1.42
+      },
+      {
+        "etf": "XLY",
+        "name": "Consumer Discretionary",
+        "pct": 1.15
+      },
+      {
+        "etf": "XLE",
+        "name": "Energy",
+        "pct": 0.63
+      },
+      {
+        "etf": "XLP",
+        "name": "Consumer Staples",
+        "pct": 0.43
+      },
+      {
+        "etf": "XLF",
+        "name": "Financials",
+        "pct": 0.38
+      },
+      {
+        "etf": "XLB",
+        "name": "Materials",
+        "pct": -0.09
+      },
+      {
+        "etf": "XLV",
+        "name": "Health Care",
+        "pct": -0.24
+      },
+      {
+        "etf": "XLRE",
+        "name": "Real Estate",
+        "pct": -0.4
+      },
+      {
+        "etf": "XLI",
+        "name": "Industrials",
+        "pct": -0.93
+      },
+      {
+        "etf": "XLU",
+        "name": "Utilities",
+        "pct": -1.04
+      },
+      {
+        "etf": "XLK",
+        "name": "Technology",
+        "pct": -1.55
+      }
+    ],
+    "movers": {
+      "gainers": [
+        {
+          "symbol": "IREZ",
+          "pct": 24.68,
+          "last": 14.5
+        },
+        {
+          "symbol": "ESTC",
+          "pct": 19.31,
+          "last": 99.91
+        },
+        {
+          "symbol": "QNRX",
+          "pct": 18.72,
+          "last": 6.12
+        },
+        {
+          "symbol": "SMST",
+          "pct": 14.55,
+          "last": 26.3
+        },
+        {
+          "symbol": "MSTZ",
+          "pct": 14.47,
+          "last": 5.3
+        }
+      ],
+      "losers": [
+        {
+          "symbol": "WETO",
+          "pct": -50.26,
+          "last": 5.72
+        },
+        {
+          "symbol": "VISN",
+          "pct": -47.89,
+          "last": 6.06
+        },
+        {
+          "symbol": "PYPG",
+          "pct": -25.74,
+          "last": 7.3
+        },
+        {
+          "symbol": "IREX",
+          "pct": -25.44,
+          "last": 10.55
+        },
+        {
+          "symbol": "IRE",
+          "pct": -25.38,
+          "last": 7.32
+        }
+      ]
+    },
+    "breadth": {
+      "advancers": 594,
+      "decliners": 1135,
+      "unchanged": 19,
+      "ad_ratio": 0.52,
+      "universe_size": 1748,
+      "scope": "price\u2265$5, vol\u22651,000,000",
+      "session_date": "2026-08-28"
+    },
+    "trend": {
+      "ticker": "SPY",
+      "price": 769.35,
+      "sma_50": 753.96,
+      "pct_above": 2.04,
+      "above_50dma": true
+    }
+  }
+}
