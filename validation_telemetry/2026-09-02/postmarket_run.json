@@ -1,0 +1,223 @@
+{
+  "date": "2026-09-02",
+  "time_period": "postmarket",
+  "recorded_at": "2026-09-03T09:04:28-04:00",
+  "top_gainers": [
+    {
+      "ticker": "BIAF",
+      "change_percentage": 47.95,
+      "price": 9.75,
+      "catalyst": "12 Health Care Stocks Moving In Friday's Pre-Market Session",
+      "volume": null
+    },
+    {
+      "ticker": "SGLD",
+      "change_percentage": 42.32,
+      "price": 7.23,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "SWVL",
+      "change_percentage": 32.64,
+      "price": 5.08,
+      "catalyst": "Swvl Announces $13 Million Strategic Investment Round Priced At-The-Market Under Nasdaq Rules led by the Sawiris Family and Coefficient LP t",
+      "volume": null
+    },
+    {
+      "ticker": "DLLL",
+      "change_percentage": 31.58,
+      "price": 28.33,
+      "catalyst": "GraniteShares Announces Forward Splits",
+      "volume": null
+    },
+    {
+      "ticker": "ASTX",
+      "change_percentage": 23.89,
+      "price": 11.2,
+      "catalyst": "",
+      "volume": null
+    }
+  ],
+  "top_losers": [
+    {
+      "ticker": "CRDU",
+      "change_percentage": -40.12,
+      "price": 6.85,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "CRDO",
+      "change_percentage": -20.04,
+      "price": 165.22,
+      "catalyst": "3 Millionaire-Maker Artificial Intelligence (AI) Stocks to Buy Now",
+      "volume": null
+    },
+    {
+      "ticker": "FCEL",
+      "change_percentage": -15.69,
+      "price": 14.4,
+      "catalyst": "Super Micro Computer and Albertsons Companies have been highlighted as Zacks Bull and Bear of the Day",
+      "volume": null
+    },
+    {
+      "ticker": "IREZ",
+      "change_percentage": -15.08,
+      "price": 11.32,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "MDB",
+      "change_percentage": -13.54,
+      "price": 375.4,
+      "catalyst": "MongoDB Stock: Buy or Sell?",
+      "volume": null
+    }
+  ],
+  "featured_mover": {
+    "ticker": "BIAF",
+    "symbol": "BIAF",
+    "change_percentage": 0.0,
+    "price": 9.75,
+    "last": 9.75,
+    "catalyst": "12 Health Care Stocks Moving In Friday's Pre-Market Session",
+    "volume": 0
+  },
+  "featured_stock": "BIAF",
+  "post": "Bootstrapped telemetry for catalyst audit (2026-09-02)",
+  "style": "bootstrap",
+  "market_internals": {
+    "as_of": "2026-09-03T13:04:26",
+    "sectors": [
+      {
+        "etf": "XLB",
+        "name": "Materials",
+        "pct": 1.69
+      },
+      {
+        "etf": "XLC",
+        "name": "Communication Services",
+        "pct": 1.39
+      },
+      {
+        "etf": "XLF",
+        "name": "Financials",
+        "pct": 0.8
+      },
+      {
+        "etf": "XLV",
+        "name": "Health Care",
+        "pct": 0.75
+      },
+      {
+        "etf": "XLE",
+        "name": "Energy",
+        "pct": 0.51
+      },
+      {
+        "etf": "XLP",
+        "name": "Consumer Staples",
+        "pct": 0.33
+      },
+      {
+        "etf": "XLU",
+        "name": "Utilities",
+        "pct": 0.26
+      },
+      {
+        "etf": "XLY",
+        "name": "Consumer Discretionary",
+        "pct": 0.24
+      },
+      {
+        "etf": "XLI",
+        "name": "Industrials",
+        "pct": 0.03
+      },
+      {
+        "etf": "XLK",
+        "name": "Technology",
+        "pct": -0.02
+      },
+      {
+        "etf": "XLRE",
+        "name": "Real Estate",
+        "pct": -0.7
+      }
+    ],
+    "movers": {
+      "gainers": [
+        {
+          "symbol": "BIAF",
+          "pct": 47.95,
+          "last": 9.75
+        },
+        {
+          "symbol": "SGLD",
+          "pct": 42.32,
+          "last": 7.23
+        },
+        {
+          "symbol": "SWVL",
+          "pct": 32.64,
+          "last": 5.08
+        },
+        {
+          "symbol": "DLLL",
+          "pct": 31.58,
+          "last": 28.33
+        },
+        {
+          "symbol": "ASTX",
+          "pct": 23.89,
+          "last": 11.2
+        }
+      ],
+      "losers": [
+        {
+          "symbol": "CRDU",
+          "pct": -40.12,
+          "last": 6.85
+        },
+        {
+          "symbol": "CRDO",
+          "pct": -20.04,
+          "last": 165.22
+        },
+        {
+          "symbol": "FCEL",
+          "pct": -15.69,
+          "last": 14.4
+        },
+        {
+          "symbol": "IREZ",
+          "pct": -15.08,
+          "last": 11.32
+        },
+        {
+          "symbol": "MDB",
+          "pct": -13.54,
+          "last": 375.4
+        }
+      ]
+    },
+    "breadth": {
+      "advancers": 1314,
+      "decliners": 615,
+      "unchanged": 24,
+      "ad_ratio": 2.14,
+      "universe_size": 1953,
+      "scope": "price\u2265$5, vol\u22651,000,000",
+      "session_date": "2026-09-02"
+    },
+    "trend": {
+      "ticker": "SPY",
+      "price": 765.16,
+      "sma_50": 755.34,
+      "pct_above": 1.3,
+      "above_50dma": true
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "date": "2026-08-31",
+  "movers": [
+    {
+      "ticker": "AEHL",
+      "change_percentage": 83.33,
+      "price": 6.49,
+      "catalyst": "Stock Market Today: Dow, Nasdaq Futures Fall As Trump Rejects 'Totally Unacceptable' Iran Peace Proposal\u2014Micron, Moderna In Focus (UPDATED)",
+      "volume": null
+    },
+    {
+      "ticker": "USDE",
+      "change_percentage": 31.21,
+      "price": 8.87,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "DPRO",
+      "change_percentage": 21.39,
+      "price": 5.42,
+      "catalyst": "Draganfly Appoints Brigadier General AJ Pasagian USMC (Ret\u2019d) as President of Draganfly Defense USA Operations",
+      "volume": null
+    },
+    {
+      "ticker": "CRCG",
+      "change_percentage": 19.32,
+      "price": 17.48,
+      "catalyst": "Currenc Group Announces Extension of Exclusivity Period for Proposed Reverse Merger with Animoca Brands Corporation Limited",
+      "volume": null
+    },
+    {
+      "ticker": "STDN",
+      "change_percentage": 14.26,
+      "price": 16.11,
+      "catalyst": "Why Cameco's Ugly Earnings Miss Might Be Good News in Disguise",
+      "volume": null
+    }
+  ]
+}

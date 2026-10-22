@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-03",
+  "movers": [
+    {
+      "ticker": "RARE",
+      "change_percentage": -44.03,
+      "price": 14.85,
+      "catalyst": "Fabry Disease Treatment Market 2026-2031 - Growth Driven by Increasing Adoption of Enzyme Replacement Therapy",
+      "volume": null
+    },
+    {
+      "ticker": "SMST",
+      "change_percentage": -35.12,
+      "price": 17.96,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "PSNY",
+      "change_percentage": -27.52,
+      "price": 8.69,
+      "catalyst": "Rivian Doesn't Get Enough Credit for Crushing Rivals in This Metric",
+      "volume": null
+    },
+    {
+      "ticker": "SGLD",
+      "change_percentage": -20.75,
+      "price": 5.73,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "PSQL",
+      "change_percentage": -20.02,
+      "price": 9.75,
+      "catalyst": "",
+      "volume": null
+    }
+  ]
+}
