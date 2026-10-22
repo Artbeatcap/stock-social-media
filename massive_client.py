@@ -297,6 +297,7 @@ def _normalize_news_item(item: dict[str, Any]) -> dict[str, Any]:
         "url": item.get("article_url") or item.get("url") or "",
         "datetime": timestamp,
         "sentiment": sentiment,
+        "insights": insights if isinstance(insights, list) else [],
         "tickers": item.get("tickers") or [],
     }
 
@@ -312,6 +313,117 @@ def get_news_for_ticker(ticker: str, limit: int = 5) -> list[dict[str, Any]]:
         },
     )
     return [_normalize_news_item(item) for item in data.get("results", [])[:limit]]
+
+
+def get_news_for_ticker_since(
+    ticker: str,
+    *,
+    since_ts: int,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    """Return ticker news published at or after *since_ts* (unix seconds)."""
+    items = get_news_for_ticker(ticker, limit=limit)
+    return [item for item in items if int(item.get("datetime") or 0) >= since_ts]
+
+
+def get_news_for_ticker_window(
+    ticker: str,
+    *,
+    hours: float = 24.0,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    """Return ticker news from the last *hours* hours."""
+    since_ts = int((datetime.now(tz=NY) - timedelta(hours=hours)).timestamp())
+    return get_news_for_ticker_since(ticker, since_ts=since_ts, limit=limit)
+
+
+def get_minute_bars(ticker: str, session_date: str, limit: int = 50000) -> list[dict[str, Any]]:
+    """Fetch 1-minute OHLCV bars for a single session date (YYYY-MM-DD)."""
+    sym = ticker.upper()
+    data = _request(
+        f"/v2/aggs/ticker/{sym}/range/1/minute/{session_date}/{session_date}",
+        {"adjusted": "true", "sort": "asc", "limit": limit},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        open_px = _as_float(item.get("o"))
+        close_px = _as_float(item.get("c"))
+        bars.append(
+            {
+                "timestamp_ms": ts_ms,
+                "timestamp": datetime.fromtimestamp(ts_ms / 1000, tz=NY).isoformat(),
+                "open": open_px,
+                "high": _as_float(item.get("h")),
+                "low": _as_float(item.get("l")),
+                "close": close_px,
+                "volume": _as_int(item.get("v")),
+                "pct_change": ((close_px - open_px) / open_px * 100.0) if open_px else 0.0,
+            }
+        )
+    return bars
+
+
+class _ContractMetrics:
+    def __init__(self, raw: dict[str, Any]) -> None:
+        self.oi = _as_int(raw.get("open_interest"))
+        self.iv = _as_float(raw.get("iv"))
+
+
+def get_options_chain_snapshot(underlying: str, limit: int = 50) -> dict[str, Any]:
+    """Fetch options chain snapshot; returns empty contracts on entitlement errors."""
+    sym = underlying.upper()
+    data = _request(f"/v3/snapshot/options/{sym}", {"limit": limit})
+    if not data:
+        return {"ok": False, "contracts": [], "error": "empty response"}
+
+    results = data.get("results") or []
+    contracts: list[dict[str, Any]] = []
+    for item in results:
+        details = item.get("details") or {}
+        day = item.get("day") or {}
+        greeks = item.get("greeks") or {}
+        contracts.append(
+            {
+                "ticker": details.get("ticker") or item.get("ticker"),
+                "strike": _as_float(details.get("strike_price")),
+                "expiration": details.get("expiration_date") or "",
+                "contract_type": str(details.get("contract_type") or "").lower(),
+                "open_interest": _as_int(item.get("open_interest") or day.get("open_interest")),
+                "volume": _as_int(day.get("volume")),
+                "iv": _as_float(greeks.get("implied_volatility") or item.get("implied_volatility")),
+                "last": _as_float(day.get("close") or item.get("last_quote", {}).get("midpoint")),
+            }
+        )
+    return {"ok": True, "contracts": contracts, "count": len(contracts)}
+
+
+def flag_unusual_options(contracts: list[dict[str, Any]], top_n: int = 5) -> list[dict[str, Any]]:
+    """Flag strikes with elevated OI or IV relative to the chain median."""
+    if not contracts:
+        return []
+
+    oi_values = sorted(c.oi for c in [_ContractMetrics(c) for c in contracts] if c.oi > 0)
+    iv_values = sorted(c.iv for c in [_ContractMetrics(c) for c in contracts] if c.iv > 0)
+    if not oi_values and not iv_values:
+        return []
+
+    oi_median = oi_values[len(oi_values) // 2] if oi_values else 0
+    iv_median = iv_values[len(iv_values) // 2] if iv_values else 0.0
+
+    flagged: list[dict[str, Any]] = []
+    for raw in contracts:
+        cm = _ContractMetrics(raw)
+        reasons: list[str] = []
+        if oi_median and cm.oi >= max(oi_median * 2, oi_median + 500):
+            reasons.append(f"OI {cm.oi:,} vs median {oi_median:,}")
+        if iv_median and cm.iv >= iv_median * 1.5:
+            reasons.append(f"IV {cm.iv:.2f} vs median {iv_median:.2f}")
+        if reasons:
+            flagged.append({**raw, "flags": reasons, "flag_score": len(reasons)})
+
+    flagged.sort(key=lambda row: (row.get("flag_score", 0), row.get("open_interest", 0)), reverse=True)
+    return flagged[:top_n]
 
 
 def get_market_news(limit: int = 20) -> list[dict[str, Any]]:
