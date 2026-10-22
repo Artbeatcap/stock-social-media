@@ -1,0 +1,9 @@
+[Unit]
+Description=Featured mover deep dive research log
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tradingapp/trading-analysis
+Environment=CATALYST_QUALITY_AUDIT_TASK=featured
+ExecStart=/usr/bin/python3 scripts/run_scheduled_quality_audits.py --task featured
