@@ -78,6 +78,75 @@ TO_EMAIL = 'clarencebellwork@gmail.com'
 
 NY = pytz.timezone('America/New_York')
 TWITTER_CHAR_LIMIT = 280
+TELEMETRY_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'validation_telemetry')
+
+
+def write_run_snapshot(
+    time_period: str,
+    context: Dict[str, Any],
+    post_data: Dict[str, Any],
+) -> None:
+    """
+    Persist production telemetry for catalyst quality audits (gitignored on disk).
+    """
+    try:
+        trade_date = datetime.now(NY).date().isoformat()
+        day_dir = os.path.join(TELEMETRY_ROOT, trade_date)
+        os.makedirs(day_dir, exist_ok=True)
+
+        catalyst_by_ticker = {
+            str(m.get('ticker', '')).upper(): str(m.get('catalyst') or '')
+            for m in (context.get('top_gainers') or []) + (context.get('top_losers') or [])
+            if m.get('ticker')
+        }
+
+        def _movers_from_internals(internals: Dict[str, Any]) -> tuple[list, list]:
+            gainers_out: list = []
+            losers_out: list = []
+            movers = (internals or {}).get('movers') or {}
+            for side, bucket in (('gainers', gainers_out), ('losers', losers_out)):
+                for item in movers.get(side) or []:
+                    symbol = str(item.get('symbol') or '').upper()
+                    if not symbol:
+                        continue
+                    bucket.append({
+                        'ticker': symbol,
+                        'change_percentage': item.get('pct'),
+                        'catalyst': catalyst_by_ticker.get(symbol, ''),
+                        'price': item.get('price'),
+                        'volume': item.get('volume'),
+                    })
+            return gainers_out, losers_out
+
+        gainers = list(context.get('top_gainers') or [])
+        losers = list(context.get('top_losers') or [])
+        internals = post_data.get('market_internals') if isinstance(post_data, dict) else None
+        if time_period == 'postmarket' and internals:
+            gainers, losers = _movers_from_internals(internals)
+
+        with open(os.path.join(day_dir, 'top_gainers.json'), 'w', encoding='utf-8') as fh:
+            json.dump(gainers, fh, indent=2)
+        with open(os.path.join(day_dir, 'top_losers.json'), 'w', encoding='utf-8') as fh:
+            json.dump(losers, fh, indent=2)
+
+        run_name = f"{time_period}_run.json"
+        snapshot = {
+            'time_period': time_period,
+            'sent_at': datetime.now(NY).isoformat(),
+            'featured_stock': post_data.get('featured_stock'),
+            'post_style': post_data.get('style'),
+            'char_count': post_data.get('char_count'),
+            'market_summary': post_data.get('market_summary'),
+            'top_gainers': gainers,
+            'top_losers': losers,
+        }
+        if internals:
+            snapshot['market_internals'] = internals
+        with open(os.path.join(day_dir, run_name), 'w', encoding='utf-8') as fh:
+            json.dump(snapshot, fh, indent=2)
+        logger.info("Wrote validation telemetry to %s", day_dir)
+    except Exception as exc:
+        logger.warning("Failed to write validation telemetry: %s", exc)
 
 
 def validate_no_fabricated_tickers(text: str, allowed_tickers: set) -> tuple[bool, list[str]]:
@@ -1270,6 +1339,7 @@ def main(time_period: str = None):
     success = send_email(subject, html_content, text_content)
     
     if success:
+        write_run_snapshot(time_period, context, post_data)
         logger.info("✅ Twitter post email sent successfully!")
         print(f"\nSUCCESS: {time_period.title()} post emailed to {TO_EMAIL}")
         print(f"Post: {post_data['post']}")
