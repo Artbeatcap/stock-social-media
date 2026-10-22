@@ -1,0 +1,40 @@
+{
+  "date": "2026-08-27",
+  "movers": [
+    {
+      "ticker": "CRMG",
+      "change_percentage": 44.26,
+      "price": 9.68,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "USDE",
+      "change_percentage": 34.95,
+      "price": 8.07,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "OKTA",
+      "change_percentage": 28.63,
+      "price": 172.91,
+      "catalyst": "Why SailPoint Stock Was Cruising Higher This Week",
+      "volume": null
+    },
+    {
+      "ticker": "SOLT",
+      "change_percentage": 26.32,
+      "price": 67.71,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "MSTU",
+      "change_percentage": 23.09,
+      "price": 35.34,
+      "catalyst": "MicroStrategy Supercharges AI, Unveils Updates To MicroStrategy ONE",
+      "volume": null
+    }
+  ]
+}
