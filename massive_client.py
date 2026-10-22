@@ -331,7 +331,9 @@ def enrich_movers_with_news(movers: list[dict[str, Any]], limit: int = 10) -> li
     enriched: list[dict[str, Any]] = []
     for mover in movers[:limit]:
         symbol = str(mover.get("symbol") or mover.get("ticker") or "").upper()
-        change_pct = _as_float(mover.get("change_percentage"))
+        change_pct = _as_float(
+            mover.get("change_percentage", mover.get("pct"))
+        )
         news_items = get_news_for_ticker(symbol, limit=5) if symbol else []
         wanted = "positive" if change_pct >= 0 else "negative"
         catalyst = ""
@@ -413,6 +415,72 @@ def get_extended_hours_volume(symbol: str, start_dt: datetime, end_dt: datetime)
         if start_ms <= ts <= end_ms:
             volume += _as_int(item.get("v"))
     return volume
+
+
+def get_news_for_ticker_window(
+    ticker: str,
+    *,
+    hours: int = 24,
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    """Return normalized news items published within the last ``hours`` hours."""
+    cutoff = int((datetime.now(tz=NY) - timedelta(hours=hours)).timestamp())
+    items = get_news_for_ticker(ticker, limit=limit)
+    return [item for item in items if _as_int(item.get("datetime"), 0) >= cutoff]
+
+
+def get_minute_aggregates(
+    symbol: str,
+    from_date: date,
+    to_date: date,
+    *,
+    limit: int = 50000,
+) -> list[dict[str, Any]]:
+    """Fetch 1-minute OHLCV bars for a stock between two dates (inclusive)."""
+    massive_symbol = INDEX_SYMBOLS.get(symbol.upper(), symbol.upper())
+    data = _request(
+        f"/v2/aggs/ticker/{massive_symbol}/range/1/minute/{from_date.isoformat()}/{to_date.isoformat()}",
+        {"adjusted": "true", "sort": "asc", "limit": limit},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        bars.append(
+            {
+                "t": ts_ms,
+                "datetime": datetime.fromtimestamp(ts_ms / 1000, tz=NY).isoformat(timespec="seconds"),
+                "open": _as_float(item.get("o")),
+                "high": _as_float(item.get("h")),
+                "low": _as_float(item.get("l")),
+                "close": _as_float(item.get("c")),
+                "volume": _as_int(item.get("v")),
+                "vwap": _as_float(item.get("vw")),
+            }
+        )
+    return bars
+
+
+def get_options_chain_snapshot(
+    underlying: str,
+    *,
+    expiration_date: Optional[str] = None,
+    limit: int = 50,
+) -> dict[str, Any]:
+    """Fetch a snapshot of the options chain for an underlying stock."""
+    params: dict[str, Any] = {
+        "underlying_asset": underlying.upper(),
+        "limit": limit,
+    }
+    if expiration_date:
+        params["expiration_date"] = expiration_date
+    data = _request("/v3/snapshot/options", params)
+    if not data:
+        return {"ok": False, "contracts": [], "error": "empty response (options may be tier-gated)"}
+
+    contracts = data.get("results") or data.get("contracts") or []
+    if isinstance(contracts, dict):
+        contracts = [contracts]
+    return {"ok": True, "contracts": contracts, "raw": data}
 
 
 def fetch_stock_news(ticker: str) -> List[Dict[str, Any]]:
