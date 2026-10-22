@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import os
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 import pytz
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 NY = pytz.timezone("America/New_York")
 MASSIVE_BASE_URL = os.getenv("MASSIVE_BASE_URL", "https://api.massive.com").rstrip("/")
-MASSIVE_API_KEY = os.getenv("MASSIVE_API_KEY")
+MASSIVE_API_KEY = os.getenv("MASSIVE_API_KEY") or os.getenv("POLYGON_API_KEY")
 
 INDEX_SYMBOLS = {"VIX": "I:VIX", "SPX": "I:SPX", "NDX": "I:NDX", "DJI": "I:DJI"}
 DEFAULT_QUOTE_SYMBOLS = ["SPY", "QQQ", "IWM", "VIX"]
@@ -38,7 +39,35 @@ DEFAULT_MOVER_UNIVERSE = [
 
 
 def _api_key() -> Optional[str]:
-    return os.getenv("MASSIVE_API_KEY") or MASSIVE_API_KEY
+    return os.getenv("MASSIVE_API_KEY") or os.getenv("POLYGON_API_KEY") or MASSIVE_API_KEY
+
+
+_OFFLINE_CACHE: dict[str, Any] | None = None
+
+
+def _offline_cache_path() -> Path:
+    override = os.getenv("MASSIVE_OFFLINE_CACHE")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parent / "validation_telemetry" / "offline_cache.json"
+
+
+def _load_offline_cache() -> dict[str, Any]:
+    global _OFFLINE_CACHE
+    if _OFFLINE_CACHE is not None:
+        return _OFFLINE_CACHE
+    path = _offline_cache_path()
+    if not path.exists():
+        _OFFLINE_CACHE = {}
+        return _OFFLINE_CACHE
+    try:
+        import json
+
+        _OFFLINE_CACHE = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.warning("Failed to read offline Massive cache %s: %s", path, exc)
+        _OFFLINE_CACHE = {}
+    return _OFFLINE_CACHE
 
 
 def _request(path: str, params: Optional[dict[str, Any]] = None, timeout: int = 12) -> dict[str, Any]:
@@ -302,10 +331,16 @@ def _normalize_news_item(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_news_for_ticker(ticker: str, limit: int = 5) -> list[dict[str, Any]]:
+    symbol = ticker.upper()
+    if not _api_key():
+        cached = (_load_offline_cache().get("news") or {}).get(symbol) or []
+        if cached:
+            return cached[:limit]
+
     data = _request(
         "/v2/reference/news",
         {
-            "ticker": ticker.upper(),
+            "ticker": symbol,
             "limit": limit,
             "order": "desc",
             "sort": "published_utc",
@@ -413,6 +448,85 @@ def get_extended_hours_volume(symbol: str, start_dt: datetime, end_dt: datetime)
         if start_ms <= ts <= end_ms:
             volume += _as_int(item.get("v"))
     return volume
+
+
+def get_news_for_ticker_window(
+    ticker: str,
+    *,
+    hours: int = 24,
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    """Return normalized news items published within the last ``hours`` hours."""
+    cutoff = int((datetime.now(tz=NY) - timedelta(hours=hours)).timestamp())
+    items = get_news_for_ticker(ticker, limit=limit)
+    return [item for item in items if _as_int(item.get("datetime"), 0) >= cutoff]
+
+
+def get_minute_aggregates(
+    symbol: str,
+    from_date: date,
+    to_date: date,
+    *,
+    limit: int = 50000,
+) -> list[dict[str, Any]]:
+    """Fetch 1-minute OHLCV bars for a stock between two dates (inclusive)."""
+    symbol = symbol.upper()
+    if not _api_key():
+        bars_by_date = (_load_offline_cache().get("minute_bars") or {}).get(symbol) or {}
+        bars: list[dict[str, Any]] = []
+        day = from_date
+        while day <= to_date:
+            bars.extend(bars_by_date.get(day.isoformat()) or [])
+            day += timedelta(days=1)
+        return bars[:limit]
+
+    massive_symbol = INDEX_SYMBOLS.get(symbol, symbol)
+    data = _request(
+        f"/v2/aggs/ticker/{massive_symbol}/range/1/minute/{from_date.isoformat()}/{to_date.isoformat()}",
+        {"adjusted": "true", "sort": "asc", "limit": limit},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        bars.append(
+            {
+                "t": ts_ms,
+                "datetime": datetime.fromtimestamp(ts_ms / 1000, tz=NY).isoformat(timespec="seconds"),
+                "open": _as_float(item.get("o")),
+                "high": _as_float(item.get("h")),
+                "low": _as_float(item.get("l")),
+                "close": _as_float(item.get("c")),
+                "volume": _as_int(item.get("v")),
+                "vwap": _as_float(item.get("vw")),
+            }
+        )
+    return bars
+
+
+def get_options_chain_snapshot(
+    underlying: str,
+    *,
+    expiration_date: Optional[str] = None,
+    limit: int = 50,
+) -> dict[str, Any]:
+    """Fetch a snapshot of the options chain for an underlying stock."""
+    symbol = underlying.upper()
+    if not _api_key():
+        cached = (_load_offline_cache().get("options") or {}).get(symbol)
+        if cached is not None:
+            return cached
+
+    params: dict[str, Any] = {"limit": limit}
+    if expiration_date:
+        params["expiration_date"] = expiration_date
+    data = _request(f"/v3/snapshot/options/{symbol}", params)
+    if not data:
+        return {"ok": False, "contracts": [], "error": "empty response (options may be tier-gated)"}
+
+    contracts = data.get("results") or data.get("contracts") or []
+    if isinstance(contracts, dict):
+        contracts = [contracts]
+    return {"ok": True, "contracts": contracts, "raw": data}
 
 
 def fetch_stock_news(ticker: str) -> List[Dict[str, Any]]:
