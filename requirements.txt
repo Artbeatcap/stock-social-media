@@ -1,0 +1,4 @@
+# Runtime for twitter_auto_emailer, market_internals, and catalyst quality audits
+python-dotenv==1.0.0
+pytz==2024.1
+requests==2.31.0
