@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-01",
+  "movers": [
+    {
+      "ticker": "ALMS",
+      "change_percentage": -56.58,
+      "price": 9.47,
+      "catalyst": "Alumis Stock Has Soared 400%. Cormorant Bought Another $8 Million Last Quarter",
+      "volume": null
+    },
+    {
+      "ticker": "CRDU",
+      "change_percentage": -17.04,
+      "price": 11.44,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "ENOV",
+      "change_percentage": -16.51,
+      "price": 20.53,
+      "catalyst": "4 Top Growth Stocks Worth Buying Under $100 Today",
+      "volume": null
+    },
+    {
+      "ticker": "ONDL",
+      "change_percentage": -15.82,
+      "price": 5.11,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "BMNU",
+      "change_percentage": -15.2,
+      "price": 17.52,
+      "catalyst": "",
+      "volume": null
+    }
+  ]
+}

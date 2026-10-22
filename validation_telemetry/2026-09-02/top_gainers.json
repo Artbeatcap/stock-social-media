@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-02",
+  "movers": [
+    {
+      "ticker": "BIAF",
+      "change_percentage": 47.95,
+      "price": 9.75,
+      "catalyst": "12 Health Care Stocks Moving In Friday's Pre-Market Session",
+      "volume": null
+    },
+    {
+      "ticker": "SGLD",
+      "change_percentage": 42.32,
+      "price": 7.23,
+      "catalyst": "",
+      "volume": null
+    },
+    {
+      "ticker": "SWVL",
+      "change_percentage": 32.64,
+      "price": 5.08,
+      "catalyst": "Swvl Announces $13 Million Strategic Investment Round Priced At-The-Market Under Nasdaq Rules led by the Sawiris Family and Coefficient LP t",
+      "volume": null
+    },
+    {
+      "ticker": "DLLL",
+      "change_percentage": 31.58,
+      "price": 28.33,
+      "catalyst": "GraniteShares Announces Forward Splits",
+      "volume": null
+    },
+    {
+      "ticker": "ASTX",
+      "change_percentage": 23.89,
+      "price": 11.2,
+      "catalyst": "",
+      "volume": null
+    }
+  ]
+}
