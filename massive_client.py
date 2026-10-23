@@ -423,6 +423,95 @@ def fetch_news() -> List[Dict[str, Any]]:
     return get_market_news(limit=20)
 
 
+def get_minute_bars_for_date(ticker: str, trade_date: date, limit: int = 5000) -> list[dict[str, Any]]:
+    """Intraday 1-minute OHLCV bars for a single US session date."""
+    sym = ticker.upper()
+    data = _request(
+        f"/v2/aggs/ticker/{sym}/range/1/minute/{trade_date.isoformat()}/{trade_date.isoformat()}",
+        {"adjusted": "true", "sort": "asc", "limit": limit},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        bars.append(
+            {
+                "timestamp_ms": ts_ms,
+                "time_et": datetime.fromtimestamp(ts_ms / 1000, tz=NY).strftime("%Y-%m-%d %H:%M:%S ET"),
+                "open": _as_float(item.get("o")),
+                "high": _as_float(item.get("h")),
+                "low": _as_float(item.get("l")),
+                "close": _as_float(item.get("c")),
+                "volume": _as_int(item.get("v")),
+            }
+        )
+    return bars
+
+
+def get_options_chain_snapshot(
+    underlying: str,
+    limit: int = 50,
+    expiration_date: Optional[str] = None,
+) -> dict[str, Any]:
+    """
+    Options chain snapshot for unusual IV / OI flags in research logs.
+
+    Tries v3 snapshot path first, then falls back to reference contracts query.
+    """
+    sym = underlying.upper()
+    params: dict[str, Any] = {"limit": limit}
+    if expiration_date:
+        params["expiration_date"] = expiration_date
+
+    data = _request(f"/v3/snapshot/options/{sym}", params)
+    if data:
+        return {"ok": True, "source": "snapshot", "data": data}
+
+    query = {"underlying_ticker": sym, "limit": limit, "order": "desc", "sort": "strike_price"}
+    if expiration_date:
+        query["expiration_date"] = expiration_date
+    fallback = _request("/v3/reference/options/contracts", query)
+    if fallback:
+        return {"ok": True, "source": "contracts", "data": fallback}
+    return {"ok": False, "error": "options_unavailable", "data": {}}
+
+
+def summarize_options_flags(chain: dict[str, Any], spot: float) -> list[str]:
+    """Heuristic flags for IV / OI buildup from a snapshot payload."""
+    flags: list[str] = []
+    if not chain.get("ok"):
+        return ["Options chain unavailable (API tier or symbol)."]
+
+    payload = chain.get("data") or {}
+    results = payload.get("results") or payload.get("contracts") or []
+    if not isinstance(results, list) or not results:
+        return ["Options chain returned no contracts."]
+
+    scored: list[tuple[float, dict[str, Any]]] = []
+    for row in results:
+        details = row.get("details") if isinstance(row.get("details"), dict) else row
+        strike = _as_float(details.get("strike_price") or details.get("strike"))
+        oi = _as_int(details.get("open_interest") or row.get("open_interest"))
+        iv = _as_float(details.get("implied_volatility") or row.get("implied_volatility"))
+        day = row.get("day") if isinstance(row.get("day"), dict) else {}
+        vol = _as_int(day.get("volume") or row.get("volume"))
+        score = oi + vol * 10 + iv * 100
+        scored.append((score, {"strike": strike, "oi": oi, "iv": iv, "volume": vol}))
+
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    for _, top in scored[:3]:
+        if top["oi"] >= 5000:
+            flags.append(f"Elevated OI at strike {top['strike']:.2f} (OI {top['oi']:,}).")
+        if top["iv"] >= 0.8:
+            flags.append(f"High implied vol at strike {top['strike']:.2f} (IV {top['iv']:.2f}).")
+        if top["volume"] >= 1000:
+            flags.append(f"Heavy contract volume at strike {top['strike']:.2f} ({top['volume']:,} contracts).")
+
+    if spot > 0 and scored:
+        nearest = min(scored, key=lambda pair: abs(pair[1]["strike"] - spot))
+        flags.append(f"Nearest liquid strike vs spot ${spot:.2f}: {nearest[1]['strike']:.2f}.")
+    return flags[:6] or ["No unusual IV/OI patterns detected in top contracts."]
+
+
 def _tradier_history_daily(symbol: str, start_d: date, end_d: date) -> list[dict[str, Any]]:
     return get_daily_history(symbol, start_d, end_d)
 
