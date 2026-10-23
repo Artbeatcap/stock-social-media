@@ -233,3 +233,10 @@ __marimo__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Validation telemetry (generated on prod / audit runs)
+validation_telemetry/20*/
+validation_telemetry/reports/*.md
+validation_telemetry/research_log/*.md
+!validation_telemetry/reports/.gitkeep
+!validation_telemetry/research_log/.gitkeep
