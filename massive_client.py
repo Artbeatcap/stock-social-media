@@ -423,6 +423,70 @@ def fetch_news() -> List[Dict[str, Any]]:
     return get_market_news(limit=20)
 
 
+def get_intraday_minute_bars(ticker: str, trade_date: str) -> list[dict[str, Any]]:
+    """One-minute OHLC bars for a single session date (America/New_York)."""
+    sym = ticker.upper()
+    data = _request(
+        f"/v2/aggs/ticker/{sym}/range/1/minute/{trade_date}/{trade_date}",
+        {"adjusted": "true", "sort": "asc", "limit": 5000},
+    )
+    results = data.get("results") or []
+    if not results:
+        return []
+
+    bars: list[dict[str, Any]] = []
+    session_open = _as_float(results[0].get("o"))
+    prev_close = session_open
+    for item in results:
+        close = _as_float(item.get("c"))
+        open_ = _as_float(item.get("o"))
+        ts_ms = _as_int(item.get("t"))
+        ts = datetime.fromtimestamp(ts_ms / 1000, tz=NY)
+        pct_prev = ((close - prev_close) / prev_close * 100.0) if prev_close else 0.0
+        ret_open = ((close - session_open) / session_open * 100.0) if session_open else 0.0
+        bars.append(
+            {
+                "time_et": ts.strftime("%H:%M ET"),
+                "timestamp_ms": ts_ms,
+                "open": open_,
+                "close": close,
+                "volume": _as_int(item.get("v")),
+                "pct_change_from_prev": round(pct_prev, 3),
+                "return_from_open": round(ret_open, 3),
+            }
+        )
+        prev_close = close
+    return bars
+
+
+def get_options_chain_snapshot(underlying: str, limit: int = 50) -> dict[str, Any]:
+    """Snapshot of listed options for an underlying (tier-gated on some Massive plans)."""
+    sym = underlying.upper()
+    data = _request(f"/v3/snapshot/options/{sym}", {"limit": min(max(limit, 1), 250)})
+    if not data:
+        return {"error": "empty response", "contracts": []}
+
+    results = data.get("results") or []
+    contracts: list[dict[str, Any]] = []
+    for raw in results[:limit]:
+        details = raw.get("details") or raw
+        day = raw.get("day") or {}
+        greeks = raw.get("greeks") or {}
+        iv = _as_float(greeks.get("iv") or raw.get("implied_volatility"))
+        contracts.append(
+            {
+                "ticker": details.get("ticker") or raw.get("ticker"),
+                "contract_type": details.get("contract_type") or raw.get("contract_type"),
+                "strike": _as_float(details.get("strike_price") or raw.get("strike_price")),
+                "expiration": details.get("expiration_date") or raw.get("expiration_date"),
+                "open_interest": _as_int(raw.get("open_interest") or day.get("open_interest")),
+                "implied_volatility": iv,
+                "volume": _as_int(day.get("volume") or raw.get("volume")),
+            }
+        )
+    return {"contracts": contracts, "underlying": sym}
+
+
 def _tradier_history_daily(symbol: str, start_d: date, end_d: date) -> list[dict[str, Any]]:
     return get_daily_history(symbol, start_d, end_d)
 
