@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekday catalyst recall audit at 9:15pm US/Eastern
+Requires=catalyst-recall-audit.service
+
+[Timer]
+# 9:15pm ET = 01:15 UTC (EDT) / 02:15 UTC (EST); use America/New_York when supported
+OnCalendar=Mon-Fri *-*-* 21:15:00 America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target

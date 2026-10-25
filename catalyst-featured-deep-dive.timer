@@ -1,0 +1,10 @@
+[Unit]
+Description=Weekday featured mover deep dive at 5:30pm US/Eastern
+Requires=catalyst-featured-deep-dive.service
+
+[Timer]
+OnCalendar=Mon-Fri *-*-* 17:30:00 America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target

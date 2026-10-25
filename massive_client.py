@@ -423,6 +423,135 @@ def fetch_news() -> List[Dict[str, Any]]:
     return get_market_news(limit=20)
 
 
+def get_minute_bars_for_date(symbol: str, trade_date: date) -> list[dict[str, Any]]:
+    """Return 1-minute OHLC bars for a single US session date (ET)."""
+    massive_symbol = INDEX_SYMBOLS.get(symbol.upper(), symbol.upper())
+    data = _request(
+        f"/v2/aggs/ticker/{massive_symbol}/range/1/minute/{trade_date.isoformat()}/{trade_date.isoformat()}",
+        {"adjusted": "true", "sort": "asc", "limit": 50000},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        bars.append(
+            {
+                "ts_ms": ts_ms,
+                "time_et": datetime.fromtimestamp(ts_ms / 1000, tz=NY).strftime("%H:%M"),
+                "open": _as_float(item.get("o")),
+                "high": _as_float(item.get("h")),
+                "low": _as_float(item.get("l")),
+                "close": _as_float(item.get("c")),
+                "volume": _as_int(item.get("v")),
+            }
+        )
+    return bars
+
+
+def find_largest_intraday_move(symbol: str, trade_date: date) -> dict[str, Any]:
+    """Find the largest single-minute % move and optional nearby headline."""
+    bars = get_minute_bars_for_date(symbol, trade_date)
+    if not bars:
+        return {"error": "No intraday minute bars returned (tier or holiday)"}
+
+    best: dict[str, Any] | None = None
+    best_pct = 0.0
+    for bar in bars:
+        o, c = bar["open"], bar["close"]
+        if o <= 0:
+            continue
+        pct = (c - o) / o * 100.0
+        if abs(pct) > abs(best_pct):
+            best_pct = pct
+            best = {**bar, "pct_change": pct}
+
+    if not best:
+        return {"error": "Could not compute minute moves from bars"}
+
+    news = get_news_for_ticker(symbol, limit=15)
+    move_dt = datetime.fromtimestamp(best["ts_ms"] / 1000, tz=NY)
+    nearest = ""
+    best_delta = timedelta(hours=3)
+    for item in news:
+        published = datetime.fromtimestamp(int(item.get("datetime") or 0), tz=NY)
+        delta = abs(published - move_dt)
+        if delta <= timedelta(hours=2) and delta < best_delta:
+            best_delta = delta
+            nearest = str(item.get("headline") or "")
+
+    out = dict(best)
+    if nearest:
+        out["nearest_headline"] = nearest
+    return out
+
+
+def get_options_chain_snapshot(underlying: str, limit: int = 80) -> list[dict[str, Any]]:
+    sym = underlying.upper()
+    data = _request(f"/v3/snapshot/options/{sym}", {"limit": limit})
+    results = data.get("results") or []
+    if isinstance(results, dict):
+        results = [results]
+    contracts: list[dict[str, Any]] = []
+    for raw in results:
+        details = raw.get("details") or raw
+        day = raw.get("day") or {}
+        greeks = raw.get("greeks") or {}
+        contracts.append(
+            {
+                "strike": _as_float(details.get("strike_price")),
+                "expiration": details.get("expiration_date"),
+                "contract_type": str(details.get("contract_type") or "").lower(),
+                "implied_volatility": _as_float(
+                    greeks.get("implied_volatility") or raw.get("implied_volatility")
+                ),
+                "open_interest": _as_int(raw.get("open_interest") or details.get("open_interest")),
+                "volume": _as_int(day.get("volume") or raw.get("volume")),
+            }
+        )
+    return contracts
+
+
+def analyze_options_unusual_activity(underlying: str) -> list[str]:
+    """Summarize IV / OI outliers for the featured-mover research log."""
+    try:
+        contracts = get_options_chain_snapshot(underlying, limit=120)
+    except Exception as exc:
+        return [f"Options snapshot unavailable: {exc}"]
+
+    if not contracts:
+        return [
+            "Options chain empty or tier-gated (Massive snapshot/options may require higher plan)."
+        ]
+
+    notes: list[str] = []
+    ivs = [c["implied_volatility"] for c in contracts if c["implied_volatility"] > 0]
+    if ivs:
+        avg_iv = sum(ivs) / len(ivs)
+        hot = sorted(contracts, key=lambda c: c["implied_volatility"], reverse=True)[:3]
+        spikes = [
+            c
+            for c in hot
+            if c["implied_volatility"] > avg_iv * 1.35 and c["implied_volatility"] > 0
+        ]
+        if spikes:
+            for c in spikes:
+                notes.append(
+                    f"Elevated IV ~{c['implied_volatility']:.2f} on "
+                    f"{c['contract_type']} {c['strike']:.2f} exp {c['expiration']}"
+                )
+
+    by_oi = sorted(contracts, key=lambda c: c["open_interest"], reverse=True)[:3]
+    heavy_oi = [c for c in by_oi if c["open_interest"] >= 500]
+    for c in heavy_oi:
+        notes.append(
+            f"OI buildup {c['open_interest']:,} on {c['contract_type']} "
+            f"{c['strike']:.2f} exp {c['expiration']} (vol {c['volume']:,})"
+        )
+
+    if not notes:
+        notes.append("No unusual IV/OI patterns flagged in snapshot (within heuristic thresholds).")
+    return notes
+
+
 def _tradier_history_daily(symbol: str, start_d: date, end_d: date) -> list[dict[str, Any]]:
     return get_daily_history(symbol, start_d, end_d)
 

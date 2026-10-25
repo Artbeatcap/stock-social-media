@@ -233,3 +233,12 @@ __marimo__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Catalyst quality audit artifacts (structure tracked via .gitkeep)
+validation_telemetry/*/
+!validation_telemetry/reports/
+!validation_telemetry/research_log/
+validation_telemetry/reports/*
+!validation_telemetry/reports/.gitkeep
+validation_telemetry/research_log/*
+!validation_telemetry/research_log/.gitkeep
