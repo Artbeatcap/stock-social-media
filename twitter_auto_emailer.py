@@ -1270,6 +1270,14 @@ def main(time_period: str = None):
     success = send_email(subject, html_content, text_content)
     
     if success:
+        try:
+            from scripts.catalyst_audit_common import write_run_snapshot
+
+            snap_dir = write_run_snapshot(time_period, context, post_data)
+            logger.info("Wrote validation telemetry to %s", snap_dir)
+        except Exception as exc:
+            logger.warning("Could not write validation telemetry: %s", exc)
+
         logger.info("✅ Twitter post email sent successfully!")
         print(f"\nSUCCESS: {time_period.title()} post emailed to {TO_EMAIL}")
         print(f"Post: {post_data['post']}")

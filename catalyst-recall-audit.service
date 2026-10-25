@@ -1,0 +1,9 @@
+[Unit]
+Description=Catalyst recall quality audit (Massive headlines vs pipeline)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tradingapp/trading-analysis
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 scripts/catalyst_recall_audit.py

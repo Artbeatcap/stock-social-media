@@ -1,0 +1,9 @@
+[Unit]
+Description=Featured mover deep dive (news + intraday + options)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tradingapp/trading-analysis
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 scripts/featured_mover_deep_dive.py
