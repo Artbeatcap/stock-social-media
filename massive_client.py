@@ -423,6 +423,68 @@ def fetch_news() -> List[Dict[str, Any]]:
     return get_market_news(limit=20)
 
 
+def get_minute_bars_for_session(symbol: str, session_date: date) -> list[dict[str, Any]]:
+    """Return 1-minute OHLCV bars for one US session date (NYSE calendar day)."""
+    massive_symbol = INDEX_SYMBOLS.get(symbol.upper(), symbol.upper())
+    data = _request(
+        f"/v2/aggs/ticker/{massive_symbol}/range/1/minute/{session_date.isoformat()}/{session_date.isoformat()}",
+        {"adjusted": "true", "sort": "asc", "limit": 50000},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        if not ts_ms:
+            continue
+        ts = datetime.fromtimestamp(ts_ms / 1000, tz=NY)
+        bars.append(
+            {
+                "timestamp": ts.isoformat(),
+                "open": _as_float(item.get("o")),
+                "high": _as_float(item.get("h")),
+                "low": _as_float(item.get("l")),
+                "close": _as_float(item.get("c")),
+                "volume": _as_int(item.get("v")),
+                "ts_ms": ts_ms,
+            }
+        )
+    return bars
+
+
+def get_options_chain_snapshot(underlying: str, limit: int = 250) -> dict[str, Any]:
+    """
+    Options snapshot for an underlying. May return empty on lower API tiers.
+    """
+    sym = underlying.upper()
+    data = _request(f"/v3/snapshot/options/{sym}", {"limit": limit})
+    if not data:
+        return {"available": False, "contracts": [], "note": "empty response (tier or symbol)"}
+    results = data.get("results") or data.get("options") or []
+    if isinstance(results, dict):
+        results = [results]
+    contracts: list[dict[str, Any]] = []
+    for raw in results[:limit]:
+        if not isinstance(raw, dict):
+            continue
+        details = raw.get("details") or raw
+        greeks = raw.get("greeks") or {}
+        day = raw.get("day") or {}
+        contracts.append(
+            {
+                "ticker": details.get("ticker") or raw.get("ticker"),
+                "strike": _as_float(details.get("strike_price") or raw.get("strike_price")),
+                "expiry": details.get("expiration_date") or raw.get("expiration_date"),
+                "contract_type": str(details.get("contract_type") or raw.get("contract_type") or "").lower(),
+                "implied_volatility": _as_float(
+                    raw.get("implied_volatility") or greeks.get("implied_volatility")
+                ),
+                "open_interest": _as_int(raw.get("open_interest") or details.get("open_interest")),
+                "volume": _as_int(day.get("volume") or raw.get("volume")),
+                "last_price": _as_float((raw.get("last_trade") or {}).get("price") if isinstance(raw.get("last_trade"), dict) else raw.get("last_price")),
+            }
+        )
+    return {"available": bool(contracts), "contracts": contracts, "raw_status": data.get("status")}
+
+
 def _tradier_history_daily(symbol: str, start_d: date, end_d: date) -> list[dict[str, Any]]:
     return get_daily_history(symbol, start_d, end_d)
 
