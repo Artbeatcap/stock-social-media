@@ -1270,6 +1270,18 @@ def main(time_period: str = None):
     success = send_email(subject, html_content, text_content)
     
     if success:
+        try:
+            from scripts.catalyst_audit_common import write_run_snapshot
+
+            write_run_snapshot(
+                trade_date=datetime.now(NY).date(),
+                run_kind=time_period,
+                context=context,
+                post_data=post_data,
+                sent_ok=True,
+            )
+        except Exception as telemetry_err:
+            logger.warning("Telemetry snapshot skipped: %s", telemetry_err)
         logger.info("✅ Twitter post email sent successfully!")
         print(f"\nSUCCESS: {time_period.title()} post emailed to {TO_EMAIL}")
         print(f"Post: {post_data['post']}")
