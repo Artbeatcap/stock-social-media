@@ -225,6 +225,13 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Catalyst quality audit outputs (snapshots + daily reports)
+validation_telemetry/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
+validation_telemetry/reports/*.md
+validation_telemetry/research_log/*.md
+!validation_telemetry/reports/.gitkeep
+!validation_telemetry/research_log/.gitkeep
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
