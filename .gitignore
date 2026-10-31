@@ -225,6 +225,11 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Catalyst quality audit outputs (snapshots written on prod; bootstrapped locally)
+validation_telemetry/**/*
+!validation_telemetry/**/
+!validation_telemetry/**/.gitkeep
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

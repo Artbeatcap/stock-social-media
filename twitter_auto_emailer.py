@@ -1271,6 +1271,15 @@ def main(time_period: str = None):
     
     if success:
         logger.info("✅ Twitter post email sent successfully!")
+        try:
+            repo_root = os.path.dirname(os.path.abspath(__file__))
+            if repo_root not in sys.path:
+                sys.path.insert(0, repo_root)
+            from scripts.catalyst_audit_common import write_run_snapshot
+
+            write_run_snapshot(time_period, context, post_data)
+        except Exception as exc:
+            logger.warning("Failed to write validation telemetry: %s", exc)
         print(f"\nSUCCESS: {time_period.title()} post emailed to {TO_EMAIL}")
         print(f"Post: {post_data['post']}")
         print(f"Style: {post_data['style']}")
