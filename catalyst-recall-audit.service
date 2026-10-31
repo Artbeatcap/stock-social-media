@@ -1,0 +1,9 @@
+[Unit]
+Description=Catalyst recall audit runner
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tradingapp/trading-analysis
+Environment=PYTHONPATH=/home/tradingapp/trading-analysis
+ExecStart=/usr/bin/python3 scripts/catalyst_recall_audit.py

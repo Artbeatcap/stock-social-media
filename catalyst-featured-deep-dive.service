@@ -1,0 +1,9 @@
+[Unit]
+Description=Featured mover deep dive runner
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tradingapp/trading-analysis
+Environment=PYTHONPATH=/home/tradingapp/trading-analysis
+ExecStart=/usr/bin/python3 scripts/featured_mover_deep_dive.py

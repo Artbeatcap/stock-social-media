@@ -1,0 +1,11 @@
+[Unit]
+Description=Catalyst recall audit (Massive headline ground truth)
+Requires=catalyst-recall-audit.service
+
+[Timer]
+# 9:15 PM Eastern — 01:15 UTC (EDT) / 02:15 UTC (EST); use 01:15 for EDT season
+OnCalendar=Mon-Fri *-*-* 01:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
