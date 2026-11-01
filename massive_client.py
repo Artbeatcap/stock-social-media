@@ -314,6 +314,68 @@ def get_news_for_ticker(ticker: str, limit: int = 5) -> list[dict[str, Any]]:
     return [_normalize_news_item(item) for item in data.get("results", [])[:limit]]
 
 
+def get_minute_aggregates(
+    symbol: str,
+    trade_date: date,
+    *,
+    limit: int = 5000,
+) -> list[dict[str, Any]]:
+    """Return 1-minute OHLCV bars for one calendar day (NYSE date)."""
+    massive_symbol = INDEX_SYMBOLS.get(symbol.upper(), symbol.upper())
+    data = _request(
+        f"/v2/aggs/ticker/{massive_symbol}/range/1/minute/{trade_date.isoformat()}/{trade_date.isoformat()}",
+        {"adjusted": "true", "sort": "asc", "limit": limit},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        bars.append(
+            {
+                "ts_ms": ts_ms,
+                "et": datetime.fromtimestamp(ts_ms / 1000, tz=NY).strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "open": _as_float(item.get("o")),
+                "high": _as_float(item.get("h")),
+                "low": _as_float(item.get("l")),
+                "close": _as_float(item.get("c")),
+                "volume": _as_int(item.get("v")),
+            }
+        )
+    return bars
+
+
+def get_options_chain_snapshot(underlying: str, *, limit: int = 250) -> tuple[list[dict[str, Any]], Optional[str]]:
+    """
+    Return normalized option contracts from the Massive snapshot endpoint.
+    On tier-gated accounts this may return HTTP 403 — caller gets empty list + note.
+    """
+    sym = underlying.upper()
+    data = _request(f"/v3/snapshot/options/{sym}", {"limit": limit})
+    if not data:
+        return [], "Massive options snapshot unavailable (empty response or tier limit)"
+    results = data.get("results") or []
+    if not isinstance(results, list):
+        return [], "Unexpected options snapshot shape"
+    contracts: list[dict[str, Any]] = []
+    for raw in results:
+        details = raw.get("details") if isinstance(raw.get("details"), dict) else raw
+        greeks = raw.get("greeks") if isinstance(raw.get("greeks"), dict) else {}
+        day = raw.get("day") if isinstance(raw.get("day"), dict) else {}
+        contracts.append(
+            {
+                "ticker": details.get("ticker") or raw.get("ticker"),
+                "strike": _as_float(details.get("strike_price") or raw.get("strike_price")),
+                "expiry": details.get("expiration_date") or raw.get("expiration_date"),
+                "contract_type": details.get("contract_type") or raw.get("contract_type"),
+                "implied_volatility": _as_float(
+                    raw.get("implied_volatility") or greeks.get("iv") or greeks.get("implied_volatility")
+                ),
+                "open_interest": _as_int(raw.get("open_interest") or day.get("open_interest")),
+                "volume": _as_int(day.get("volume") or raw.get("volume")),
+            }
+        )
+    return contracts, None
+
+
 def get_market_news(limit: int = 20) -> list[dict[str, Any]]:
     data = _request(
         "/v2/reference/news",
