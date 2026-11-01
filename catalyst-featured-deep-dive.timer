@@ -1,0 +1,9 @@
+[Unit]
+Description=Featured mover deep dive (post-market research log)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 17:30:00 America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target

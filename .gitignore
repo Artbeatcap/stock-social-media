@@ -230,6 +230,11 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Catalyst quality audit outputs (snapshots + generated reports)
+validation_telemetry/**/*
+!validation_telemetry/**/
+!validation_telemetry/**/.gitkeep
+
 # OS
 .DS_Store
 Thumbs.db

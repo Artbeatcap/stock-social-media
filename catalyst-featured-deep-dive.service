@@ -1,0 +1,9 @@
+[Unit]
+Description=Featured mover deep dive audit
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/stock-social-media
+Environment=CATALYST_QUALITY_AUDIT_TASK=featured
+ExecStart=/usr/bin/python3 scripts/featured_mover_deep_dive.py

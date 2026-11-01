@@ -1,0 +1,9 @@
+[Unit]
+Description=Catalyst recall quality audit
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/stock-social-media
+Environment=CATALYST_QUALITY_AUDIT_TASK=recall
+ExecStart=/usr/bin/python3 scripts/catalyst_recall_audit.py
