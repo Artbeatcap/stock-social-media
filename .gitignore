@@ -225,6 +225,10 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Catalyst audit telemetry (generated on prod / cloud runs)
+validation_telemetry/**
+!validation_telemetry/**/.gitkeep
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
