@@ -1,0 +1,13 @@
+[Unit]
+Description=Catalyst recall audit (weekdays 9:15pm ET)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tradingapp/trading-analysis
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 scripts/run_scheduled_quality_audits.py --task recall
+User=tradingapp
+
+[Install]
+WantedBy=multi-user.target
