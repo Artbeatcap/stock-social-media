@@ -1,0 +1,9 @@
+[Unit]
+Description=Run catalyst recall audit weekdays at 9:15pm America/New_York
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 21:15:00 America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target
