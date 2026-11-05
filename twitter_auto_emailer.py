@@ -1271,6 +1271,13 @@ def main(time_period: str = None):
     
     if success:
         logger.info("✅ Twitter post email sent successfully!")
+        try:
+            from validation_telemetry import write_run_snapshot
+
+            snapshot_path = write_run_snapshot(time_period, context, post_data)
+            logger.info("Validation telemetry saved to %s", snapshot_path)
+        except Exception as exc:
+            logger.warning("Failed to write validation telemetry: %s", exc)
         print(f"\nSUCCESS: {time_period.title()} post emailed to {TO_EMAIL}")
         print(f"Post: {post_data['post']}")
         print(f"Style: {post_data['style']}")
