@@ -415,6 +415,58 @@ def get_extended_hours_volume(symbol: str, start_dt: datetime, end_dt: datetime)
     return volume
 
 
+def get_minute_aggregates(
+    symbol: str,
+    from_date: str,
+    to_date: str,
+    *,
+    limit: int = 5000,
+) -> list[dict[str, Any]]:
+    """
+    1-minute OHLCV bars for a stock between from_date and to_date (YYYY-MM-DD, inclusive).
+
+    Polygon/Massive path: /v2/aggs/ticker/{ticker}/range/1/minute/{from}/{to}
+    """
+    sym = symbol.upper().replace("I:", "")
+    data = _request(
+        f"/v2/aggs/ticker/{sym}/range/1/minute/{from_date}/{to_date}",
+        {"adjusted": "true", "sort": "asc", "limit": max(1, min(limit, 50000))},
+    )
+    out: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        out.append(
+            {
+                "t_ms": ts_ms,
+                "o": _as_float(item.get("o")),
+                "h": _as_float(item.get("h")),
+                "l": _as_float(item.get("l")),
+                "c": _as_float(item.get("c")),
+                "v": _as_int(item.get("v")),
+            }
+        )
+    return out
+
+
+def get_options_snapshot(underlying: str, limit: int = 250) -> list[dict[str, Any]]:
+    """
+    Options chain snapshot for an underlying (US equity). Shape varies by API tier;
+    returns raw contract dicts from the snapshot results list when present.
+    """
+    sym = underlying.upper().replace("I:", "")
+    data = _request(
+        f"/v3/snapshot/options/{sym}",
+        {"limit": max(1, min(limit, 250))},
+    )
+    results = data.get("results")
+    if isinstance(results, list):
+        return results
+    tickers = data.get("tickers")
+    if isinstance(tickers, list):
+        return tickers
+    return []
+
+
 def fetch_stock_news(ticker: str) -> List[Dict[str, Any]]:
     return get_news_for_ticker(ticker, limit=3)
 
