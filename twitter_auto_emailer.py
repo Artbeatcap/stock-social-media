@@ -9,7 +9,8 @@ import sys
 import json
 import re
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Dict, Any, List, Tuple
 import pytz
 from openai import OpenAI
@@ -1277,6 +1278,48 @@ def main(time_period: str = None):
         print(f"Characters: {post_data['char_count']}/280")
         if post_data.get('featured_stock'):
             print(f"Featured: {post_data['featured_stock']}")
+
+        if time_period == "postmarket":
+            try:
+                tel_dir = Path(__file__).resolve().parent / "validation_telemetry" / "postmarket_sent"
+                tel_dir.mkdir(parents=True, exist_ok=True)
+                date_key = datetime.now(NY).strftime("%Y-%m-%d")
+                telemetry_payload = {
+                    "recorded_at_utc": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "date_et": date_key,
+                    "time_period": time_period,
+                    "post_data": {
+                        k: post_data[k]
+                        for k in (
+                            "post",
+                            "short_version",
+                            "long_version",
+                            "featured_stock",
+                            "style",
+                            "char_count",
+                            "char_count_long",
+                            "market_summary",
+                            "market_internals",
+                            "internals_block",
+                        )
+                        if k in post_data
+                    },
+                    "context": {
+                        "timestamp": context.get("timestamp"),
+                        "date": context.get("date"),
+                        "top_gainers": context.get("top_gainers", []),
+                        "top_losers": context.get("top_losers", []),
+                        "featured_mover": context.get("featured_mover"),
+                    },
+                }
+                out_path = tel_dir / f"{date_key}.json"
+                out_path.write_text(
+                    json.dumps(telemetry_payload, indent=2, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+                logger.info("Wrote postmarket telemetry to %s", out_path)
+            except Exception as exc:
+                logger.warning("Could not write validation telemetry: %s", exc)
     else:
         logger.error("❌ Failed to send email")
         print(f"\n❌ FAILED: Could not send email")
