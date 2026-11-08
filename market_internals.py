@@ -227,6 +227,142 @@ def _fetch_grouped_daily_pair() -> Tuple[Dict[str, Dict[str, Any]], Dict[str, fl
     return result
 
 
+def _fetch_grouped_daily_pair_for_session(
+    session_date: str,
+) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, float], Optional[str]]:
+    """
+  Grouped-daily join for a specific US session (YYYY-MM-DD), not \"latest from now\".
+    """
+    try:
+        data = _polygon_get(
+            f"/v2/aggs/grouped/locale/us/market/stocks/{session_date}",
+            params={"adjusted": "true"},
+        )
+        today_rows = data.get("results") or []
+    except PolygonError as exc:
+        logger.warning("Grouped daily failed for %s: %s", session_date, exc)
+        return {}, {}, None
+
+    if not today_rows:
+        return {}, {}, None
+
+    session_dt = datetime.strptime(session_date, "%Y-%m-%d")
+    prior_date, yest_rows = _walk_back_to_trading_day(session_dt - timedelta(days=1))
+    if not yest_rows:
+        logger.warning("No prior trading day before %s", session_date)
+        return {}, {}, None
+
+    today_map: Dict[str, Dict[str, Any]] = {r["T"]: r for r in today_rows if "T" in r}
+    yest_close: Dict[str, float] = {}
+    for r in yest_rows:
+        t = r.get("T")
+        c = r.get("c")
+        if t and c is not None:
+            try:
+                yest_close[t] = float(c)
+            except (TypeError, ValueError):
+                continue
+
+    return today_map, yest_close, session_date
+
+
+def fetch_movers_and_breadth_for_session(
+    session_date: str,
+    n: int = 5,
+    min_price: float = QUALITY_MIN_PRICE,
+    min_volume: int = QUALITY_MIN_VOLUME,
+) -> Dict[str, Any]:
+    """Same as fetch_movers_and_breadth but pinned to a historical session date."""
+    cache_key = f"movers_breadth_session_{session_date}_{n}_{min_price}_{min_volume}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    out: Dict[str, Any] = {
+        "movers": {"gainers": [], "losers": []},
+        "breadth": {
+            "advancers": None,
+            "decliners": None,
+            "unchanged": None,
+            "ad_ratio": None,
+            "universe_size": None,
+            "scope": f"price≥${min_price:.0f}, vol≥{min_volume:,}",
+            "session_date": session_date,
+        },
+    }
+
+    today_map, yest_close, today_date = _fetch_grouped_daily_pair_for_session(session_date)
+    if not today_map or not yest_close:
+        return out
+
+    out["breadth"]["session_date"] = today_date
+
+    universe: List[Dict[str, Any]] = []
+    for ticker, today_row in today_map.items():
+        if "." in ticker or len(ticker) > 5:
+            continue
+
+        close = today_row.get("c")
+        vol = today_row.get("v")
+        if close is None or vol is None:
+            continue
+        try:
+            close_f = float(close)
+            vol_f = float(vol)
+        except (TypeError, ValueError):
+            continue
+
+        if close_f < min_price or vol_f < min_volume:
+            continue
+
+        prev = yest_close.get(ticker)
+        if not prev or prev <= 0:
+            continue
+
+        pct = ((close_f - prev) / prev) * 100
+        universe.append(
+            {
+                "ticker": ticker,
+                "close": round(close_f, 2),
+                "pct": round(pct, 2),
+                "volume": int(vol_f),
+            }
+        )
+
+    if not universe:
+        return out
+
+    advancers = sum(1 for u in universe if u["pct"] > 0)
+    decliners = sum(1 for u in universe if u["pct"] < 0)
+    unchanged = sum(1 for u in universe if u["pct"] == 0)
+    ad_ratio = round(advancers / decliners, 2) if decliners > 0 else None
+
+    out["breadth"].update(
+        {
+            "advancers": advancers,
+            "decliners": decliners,
+            "unchanged": unchanged,
+            "ad_ratio": ad_ratio,
+            "universe_size": len(universe),
+        }
+    )
+
+    universe.sort(key=lambda x: x["pct"], reverse=True)
+    out["movers"] = {
+        "gainers": [
+            {"symbol": u["ticker"], "pct": u["pct"], "last": u["close"]}
+            for u in universe[:n]
+        ],
+        "losers": [
+            {"symbol": u["ticker"], "pct": u["pct"], "last": u["close"]}
+            for u in reversed(universe[-n:])
+        ],
+    }
+
+    _cache_set(cache_key, out)
+    return out
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Sector performance
 # ──────────────────────────────────────────────────────────────────────────────
