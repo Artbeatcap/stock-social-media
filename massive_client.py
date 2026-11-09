@@ -423,6 +423,71 @@ def fetch_news() -> List[Dict[str, Any]]:
     return get_market_news(limit=20)
 
 
+def get_minute_bars_for_date(symbol: str, trade_date: str, limit: int = 5000) -> list[dict[str, Any]]:
+    """Return 1-minute OHLCV bars for one calendar session date (America/New_York)."""
+    sym = symbol.upper()
+    data = _request(
+        f"/v2/aggs/ticker/{sym}/range/1/minute/{trade_date}/{trade_date}",
+        {"adjusted": "true", "sort": "asc", "limit": limit},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        bars.append(
+            {
+                "timestamp_ms": ts_ms,
+                "time_et": datetime.fromtimestamp(ts_ms / 1000, tz=NY).strftime("%Y-%m-%d %H:%M ET"),
+                "open": _as_float(item.get("o")),
+                "high": _as_float(item.get("h")),
+                "low": _as_float(item.get("l")),
+                "close": _as_float(item.get("c")),
+                "volume": _as_int(item.get("v")),
+            }
+        )
+    return bars
+
+
+def get_news_for_ticker_since(
+    ticker: str,
+    published_after: datetime,
+    limit: int = 25,
+) -> list[dict[str, Any]]:
+    """News for a ticker, filtered client-side to items at or after ``published_after``."""
+    items = get_news_for_ticker(ticker, limit=limit)
+    cutoff = int(published_after.timestamp())
+    return [item for item in items if _as_int(item.get("datetime"), cutoff) >= cutoff]
+
+
+def get_options_chain_snapshot(underlying: str, limit: int = 50) -> dict[str, Any]:
+    """
+    Options chain snapshot for an underlying.
+    Lower API tiers may return HTTP 403 — callers should treat empty as tier-limited.
+    """
+    sym = underlying.upper()
+    data = _request(f"/v3/snapshot/options/{sym}", {"limit": limit})
+    if not data:
+        return {"ok": False, "contracts": [], "http_note": "empty or unauthorized response"}
+    results = data.get("results") or []
+    contracts: list[dict[str, Any]] = []
+    for row in results:
+        details = row.get("details") or {}
+        greeks = row.get("greeks") or {}
+        day = row.get("day") or {}
+        contracts.append(
+            {
+                "ticker": details.get("ticker") or row.get("ticker"),
+                "strike": _as_float(details.get("strike_price")),
+                "expiration": details.get("expiration_date"),
+                "contract_type": str(details.get("contract_type") or "").lower(),
+                "open_interest": _as_int(row.get("open_interest")),
+                "implied_volatility": _as_float(greeks.get("implied_volatility") or row.get("implied_volatility")),
+                "volume": _as_int(day.get("volume")),
+                "last_price": _as_float((row.get("last_quote") or {}).get("midpoint") or day.get("close")),
+            }
+        )
+    return {"ok": True, "contracts": contracts, "count": len(contracts)}
+
+
 def _tradier_history_daily(symbol: str, start_d: date, end_d: date) -> list[dict[str, Any]]:
     return get_daily_history(symbol, start_d, end_d)
 

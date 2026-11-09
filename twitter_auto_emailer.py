@@ -62,6 +62,15 @@ except Exception as e:
     format_internals_for_prompt = None
     logger.warning(f"market_internals unavailable: {e}")
 
+_SCRIPTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts")
+if _SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPTS_DIR)
+try:
+    from catalyst_audit_common import write_run_snapshot
+except Exception as e:
+    write_run_snapshot = None
+    logger.warning(f"catalyst telemetry unavailable: {e}")
+
 # Initialize OpenAI client
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
@@ -1270,6 +1279,11 @@ def main(time_period: str = None):
     success = send_email(subject, html_content, text_content)
     
     if success:
+        if write_run_snapshot is not None:
+            try:
+                write_run_snapshot(time_period, context, post_data, email_sent=True)
+            except Exception as e:
+                logger.warning(f"Failed to write validation telemetry: {e}")
         logger.info("✅ Twitter post email sent successfully!")
         print(f"\nSUCCESS: {time_period.title()} post emailed to {TO_EMAIL}")
         print(f"Post: {post_data['post']}")
