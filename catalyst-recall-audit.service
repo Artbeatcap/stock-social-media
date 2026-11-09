@@ -1,0 +1,13 @@
+[Unit]
+Description=Catalyst recall audit (pipeline vs Massive headlines)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tradingapp/trading-analysis
+EnvironmentFile=-/home/tradingapp/trading-analysis/.env
+Environment=CATALYST_QUALITY_AUDIT_TASK=recall
+ExecStart=/usr/bin/python3 scripts/run_scheduled_quality_audits.py --task recall
+
+[Install]
+WantedBy=multi-user.target

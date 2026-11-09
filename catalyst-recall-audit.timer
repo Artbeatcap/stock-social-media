@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekday catalyst recall audit at 9:15pm ET
+Requires=catalyst-recall-audit.service
+
+[Timer]
+# 9:15pm ET (EST) is 02:15 UTC the next calendar day → Tue–Sat trigger for Mon–Fri sessions
+OnCalendar=Tue-Sat *-*-* 02:15:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

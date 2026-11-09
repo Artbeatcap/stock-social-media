@@ -1,0 +1,13 @@
+[Unit]
+Description=Featured mover deep dive (news, 1m bars, options)
+After=network-online.target twitter-postmarket.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tradingapp/trading-analysis
+EnvironmentFile=-/home/tradingapp/trading-analysis/.env
+Environment=CATALYST_QUALITY_AUDIT_TASK=featured
+ExecStart=/usr/bin/python3 scripts/run_scheduled_quality_audits.py --task featured
+
+[Install]
+WantedBy=multi-user.target
