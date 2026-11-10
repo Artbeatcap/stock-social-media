@@ -1,0 +1,13 @@
+[Unit]
+Description=Featured mover deep dive (weekdays 5:30pm ET)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tradingapp/trading-analysis
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 scripts/run_scheduled_quality_audits.py --task featured
+User=tradingapp
+
+[Install]
+WantedBy=multi-user.target
