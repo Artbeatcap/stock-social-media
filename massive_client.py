@@ -314,6 +314,46 @@ def get_news_for_ticker(ticker: str, limit: int = 5) -> list[dict[str, Any]]:
     return [_normalize_news_item(item) for item in data.get("results", [])[:limit]]
 
 
+def get_news_for_ticker_window(
+    ticker: str,
+    *,
+    limit: int = 10,
+    published_gte: Optional[datetime] = None,
+    published_lte: Optional[datetime] = None,
+) -> list[dict[str, Any]]:
+    """Fetch ticker news with optional published_utc bounds (API filters when set)."""
+    params: dict[str, Any] = {
+        "ticker": ticker.upper(),
+        "limit": min(max(limit, 1), 100),
+        "order": "desc",
+        "sort": "published_utc",
+    }
+    if published_gte is not None:
+        params["published_utc.gte"] = published_gte.astimezone(NY).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if published_lte is not None:
+        params["published_utc.lte"] = published_lte.astimezone(NY).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    data = _request("/v2/reference/news", params)
+    items = [_normalize_news_item(item) for item in data.get("results", [])[:limit]]
+
+    if published_gte is None and published_lte is None:
+        return items
+
+    filtered: list[dict[str, Any]] = []
+    for item in items:
+        ts = item.get("datetime")
+        if not isinstance(ts, (int, float)):
+            filtered.append(item)
+            continue
+        published = datetime.fromtimestamp(ts, tz=NY)
+        if published_gte and published < published_gte.astimezone(NY):
+            continue
+        if published_lte and published > published_lte.astimezone(NY):
+            continue
+        filtered.append(item)
+    return filtered[:limit]
+
+
 def get_market_news(limit: int = 20) -> list[dict[str, Any]]:
     data = _request(
         "/v2/reference/news",
@@ -397,6 +437,61 @@ def get_daily_history(symbol: str, start_d: date, end_d: date) -> list[dict[str,
             }
         )
     return bars
+
+
+def get_minute_bars_for_date(symbol: str, session_date: date, *, limit: int = 5000) -> list[dict[str, Any]]:
+    """Return 1-minute OHLCV bars for a single calendar session date (ET)."""
+    massive_symbol = INDEX_SYMBOLS.get(symbol.upper(), symbol.upper())
+    data = _request(
+        f"/v2/aggs/ticker/{massive_symbol}/range/1/minute/{session_date.isoformat()}/{session_date.isoformat()}",
+        {"adjusted": "true", "sort": "asc", "limit": limit},
+    )
+    bars: list[dict[str, Any]] = []
+    for item in data.get("results", []) or []:
+        ts_ms = _as_int(item.get("t"))
+        bars.append(
+            {
+                "timestamp_ms": ts_ms,
+                "time_et": datetime.fromtimestamp(ts_ms / 1000, tz=NY).isoformat(),
+                "open": _as_float(item.get("o")),
+                "high": _as_float(item.get("h")),
+                "low": _as_float(item.get("l")),
+                "close": _as_float(item.get("c")),
+                "volume": _as_int(item.get("v")),
+            }
+        )
+    return bars
+
+
+def get_options_chain_snapshot(underlying: str, *, limit: int = 50) -> dict[str, Any]:
+    """
+    Snapshot of listed options for an underlying. May return empty on tier limits.
+    """
+    sym = underlying.upper()
+    data = _request(f"/v3/snapshot/options/{sym}", {"limit": min(max(limit, 1), 250)})
+    if not data:
+        return {"ok": False, "contracts": [], "error": "empty_response"}
+    results = data.get("results") or []
+    contracts: list[dict[str, Any]] = []
+    for row in results[:limit]:
+        details = row.get("details") or {}
+        greeks = row.get("greeks") or {}
+        day = row.get("day") or {}
+        last_quote = row.get("last_quote") or {}
+        mid = last_quote.get("midpoint") if isinstance(last_quote, dict) else None
+        contracts.append(
+            {
+                "ticker": details.get("ticker") or row.get("ticker"),
+                "strike": _as_float(details.get("strike_price")),
+                "expiration": details.get("expiration_date"),
+                "contract_type": details.get("contract_type"),
+                "implied_volatility": _as_float(greeks.get("implied_volatility") or row.get("implied_volatility")),
+                "open_interest": _as_int(row.get("open_interest") or day.get("open_interest")),
+                "volume": _as_int(day.get("volume") or row.get("volume")),
+                "last_price": _as_float(day.get("close") or mid),
+            }
+        )
+    return {"ok": True, "contracts": contracts, "raw_count": len(results)}
 
 
 def get_extended_hours_volume(symbol: str, start_dt: datetime, end_dt: datetime) -> int:
